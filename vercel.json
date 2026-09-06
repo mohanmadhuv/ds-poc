@@ -1,0 +1,6 @@
+{
+  "framework": "vite",
+  "installCommand": "pnpm install --config.strict-dep-builds=false",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist"
+}
