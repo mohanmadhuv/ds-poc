@@ -1,0 +1,148 @@
+@use '@carbon/react';
+@use '@carbon/react/scss/theme' as carbon-theme;
+@use '@carbon/react/scss/themes' as carbon-themes;
+
+:root {
+  @include carbon-theme.theme(carbon-themes.$g10);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--cds-background);
+  color: var(--cds-text-primary);
+}
+
+.app-main {
+  min-height: calc(100vh - 3rem);
+  margin-left: 16rem;
+  padding: var(--cds-spacing-07) var(--cds-spacing-07) var(--cds-spacing-09);
+}
+
+.page-header {
+  max-width: 66rem;
+  margin-bottom: var(--cds-spacing-07);
+}
+
+.page-header h1 {
+  margin: var(--cds-spacing-03) 0 var(--cds-spacing-05);
+}
+
+.page-description {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--cds-text-secondary);
+}
+
+.playground-grid,
+.inventory-grid {
+  display: grid;
+  gap: var(--cds-spacing-05);
+}
+
+.playground-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--cds-spacing-07);
+}
+
+.playground-grid .cds--tile {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--cds-spacing-05);
+}
+
+.playground-grid h2,
+.playground-grid p {
+  margin: 0;
+}
+
+.playground-grid .cds--btn {
+  margin-top: auto;
+}
+
+.inventory-note {
+  max-width: 66rem;
+  margin-bottom: var(--cds-spacing-06);
+}
+
+.inventory-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 84rem;
+}
+
+.inventory-card {
+  min-width: 0;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.inventory-card-heading {
+  padding: var(--cds-spacing-05);
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.inventory-card-heading h2,
+.inventory-card-heading p {
+  margin: 0;
+}
+
+.inventory-card-heading p {
+  margin-top: var(--cds-spacing-03);
+  color: var(--cds-text-secondary);
+}
+
+.inventory-card-example {
+  min-height: 7rem;
+  padding: var(--cds-spacing-05);
+  overflow: auto;
+}
+
+.inventory-card-example > .cds--data-table-container,
+.inventory-card-example > .cds--tabs,
+.inventory-card-example > .cds--accordion,
+.inventory-card-example > .cds--progress-indicator {
+  min-width: 24rem;
+}
+
+.inventory-card-example .cds--chart-holder {
+  min-width: 15rem;
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cds-body-compact-01-font-size);
+}
+
+.inventory-table th,
+.inventory-table td {
+  padding: var(--cds-spacing-03);
+  text-align: left;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.metric {
+  font-size: 2rem;
+}
+
+.route-forward {
+  color: var(--cds-link-primary);
+}
+
+@media (max-width: 66rem) {
+  .app-main {
+    margin-left: 0;
+  }
+
+  .playground-grid,
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+}
