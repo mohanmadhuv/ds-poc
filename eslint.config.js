@@ -23,4 +23,12 @@ export default tseslint.config(
       'no-unused-vars': 'off',
     },
   },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+    rules: js.configs.recommended.rules,
+  },
 );

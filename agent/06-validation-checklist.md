@@ -2,6 +2,17 @@
 
 Run this after generation and before completion.
 
+The repository validator is `pnpm validate:design-system`. Run it after the manual review below; it checks the current generated surface for Carbon vocabulary, pattern composition, token discipline, required states, accessibility markers, and build/lint/typecheck results.
+
+## 0. UI plan conformance
+
+- [ ] The implementation matches the current UI plan rather than an obsolete prompt interpretation.
+- [ ] Every listed intent has a visible or reachable supporting interaction.
+- [ ] The primary pattern is recognizable in the page anatomy.
+- [ ] Secondary patterns are used only where they support the primary task.
+- [ ] Every listed composition item is implemented with Carbon or an existing project component, or its documented gap is intentional.
+- [ ] Every listed state is implemented, reachable, or explicitly documented as out of scope with a reason.
+
 ## A. Intent and UX
 - [ ] The interface directly supports the requested user goal.
 - [ ] The primary action is obvious.

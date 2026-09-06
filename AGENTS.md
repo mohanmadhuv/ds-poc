@@ -15,12 +15,15 @@ Before editing UI code for a feature request:
 3. Read `agent/01-design-principles.md`.
 4. Read `agent/02-component-registry.md`.
 5. Read `agent/03-pattern-registry.md`.
-6. Read `agent/04-composition-rules.md`.
-7. Read `agent/05-planning-protocol.md`.
-8. Create an internal UX plan using the structure in `agent/05-planning-protocol.md`.
-9. Implement using approved Carbon React components, Carbon Charts where justified, and existing project components.
-10. Read and run through `agent/06-validation-checklist.md`.
-11. Fix violations before declaring the feature complete.
+6. Read `agent/08-saas-patterns.md`.
+7. Read `agent/04-composition-rules.md`.
+8. Read `agent/05-planning-protocol.md`.
+9. Read `agent/09-generation-validation-protocol.md`.
+10. Create the intermediate UI plan, then the detailed UX plan, using `agent/05-planning-protocol.md`.
+11. Consume the UI plan as the implementation contract: resolve its composition to Carbon/project components and implement its listed states.
+12. Implement using approved Carbon React components, Carbon Charts where justified, and existing project components.
+13. Read and run through `agent/06-validation-checklist.md` against the UI plan and implementation.
+14. Fix violations before declaring the feature complete.
 
 Use `agent/07-demo-scenarios.md` as representative examples, not hard-coded templates.
 
