@@ -7,6 +7,7 @@ import {
   BreadcrumbItem,
   Button,
   Checkbox,
+  Content,
   DataTable,
   DatePicker,
   DatePickerInput,
@@ -14,8 +15,6 @@ import {
   Header,
   HeaderMenuButton,
   HeaderName,
-  HeaderNavigation,
-  HeaderMenuItem,
   InlineLoading,
   InlineNotification,
   Loading,
@@ -86,21 +85,13 @@ function AppShell() {
 
   return (
     <div className="app-shell">
-      <Header aria-label="Carbon Agentic POC">
+      <Header aria-label="DS-PoC">
         <HeaderMenuButton
           aria-label="Toggle navigation"
           isActive={sideNavExpanded}
           onClick={() => setSideNavExpanded((expanded) => !expanded)}
         />
-        <HeaderName prefix="Carbon">Agentic POC</HeaderName>
-        <HeaderNavigation aria-label="Primary navigation">
-          <HeaderMenuItem isActive={location.pathname === '/playground'} href="/playground">
-            Playground
-          </HeaderMenuItem>
-          <HeaderMenuItem isActive={location.pathname === '/components'} href="/components">
-            Components
-          </HeaderMenuItem>
-        </HeaderNavigation>
+        <HeaderName prefix="">DS-PoC</HeaderName>
       </Header>
       <SideNav
         aria-label="Application navigation"
@@ -109,6 +100,9 @@ function AppShell() {
         isPersistent
       >
         <SideNavItems>
+          <SideNavLink as={NavLink} to="/" isActive={location.pathname === '/'}>
+            Overview
+          </SideNavLink>
           <SideNavLink as={NavLink} to="/playground" isActive={location.pathname === '/playground'}>
             Playground
           </SideNavLink>
@@ -117,20 +111,58 @@ function AppShell() {
           </SideNavLink>
         </SideNavItems>
       </SideNav>
-      <main className="app-main" id="main-content">
+      <Content className="app-main" id="main-content">
         <Routes>
-          <Route path="/" element={<NavigateToPlayground />} />
+          <Route path="/" element={<Overview />} />
           <Route path="/playground" element={<Playground />} />
           <Route path="/components" element={<ComponentsInventory />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </main>
+      </Content>
     </div>
   );
 }
 
-function NavigateToPlayground() {
-  return <Link className="route-forward" to="/playground">Open the playground</Link>;
+function Overview() {
+  return (
+    <article className="doc-page">
+      <header className="doc-header">
+        <p className="doc-eyebrow">DS-PoC</p>
+        <h1 className="doc-title">Mission</h1>
+        <p className="doc-subtitle">What this platform is for</p>
+      </header>
+      <hr className="doc-divider" />
+      <div className="doc-body">
+        <p className="doc-lead">
+          Give coding agents a single, authoritative Carbon Design System vocabulary so natural-language
+          product requests turn into precise, accessible, enterprise-grade SaaS interfaces instead of
+          generic AI dashboards.
+        </p>
+        <div className="doc-paragraphs">
+          <p>
+            Agents save time and avoid drift by composing only from the 30 approved Carbon component
+            families and documented SaaS patterns in <code>design-system/COMPONENTS.md</code>, instead of
+            inventing custom UI.
+          </p>
+          <p>
+            Reviewers can trust generated screens because every token, state, and composition decision
+            traces back to <code>design-system/DESIGN.md</code>.
+          </p>
+          <p>
+            Teams adopting this workflow know that generated interfaces already meet Carbon&rsquo;s
+            accessibility and interaction conventions, with loading, empty, error, and
+            destructive-confirmation states built in from the start.
+          </p>
+          <p>
+            The <Link to="/playground">Playground</Link> is a stable reference implementation today. The
+            goal is a validated plan &rarr; generate &rarr; validate loop, defined in{' '}
+            <code>agent/09-generation-validation-protocol.md</code>, that turns free-form prompts into
+            Carbon UI safely.
+          </p>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 function PageHeader({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {

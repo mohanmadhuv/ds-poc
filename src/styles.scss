@@ -1,4 +1,6 @@
-@use '@carbon/react';
+@use '@carbon/react' with (
+  $use-akamai-cdn: true
+);
 @use '@carbon/react/scss/theme' as carbon-theme;
 @use '@carbon/react/scss/themes' as carbon-themes;
 
@@ -20,8 +22,7 @@ body {
 
 .app-main {
   min-height: calc(100vh - 3rem);
-  margin-left: 16rem;
-  padding: var(--cds-spacing-07) var(--cds-spacing-07) var(--cds-spacing-09);
+  padding-bottom: var(--cds-spacing-09);
 }
 
 .page-header {
@@ -237,15 +238,74 @@ body {
   font-size: 2rem;
 }
 
-.route-forward {
+.doc-page {
+  max-width: 60rem;
+}
+
+.doc-eyebrow {
+  margin: 0 0 var(--cds-spacing-03);
+  color: var(--cds-link-primary);
+  font-size: var(--cds-label-01-font-size);
+  font-weight: var(--cds-label-01-font-weight);
+}
+
+.doc-title {
+  margin: 0 0 var(--cds-spacing-04);
+  font-size: var(--cds-heading-05-font-size);
+  font-weight: var(--cds-heading-05-font-weight);
+  line-height: var(--cds-heading-05-line-height);
+}
+
+.doc-subtitle {
+  margin: 0;
+  color: var(--cds-text-secondary);
+}
+
+.doc-divider {
+  max-width: 84rem;
+  margin: var(--cds-spacing-07) 0;
+  border: 0;
+  border-top: 1px solid var(--cds-border-subtle);
+}
+
+.doc-body {
+  display: grid;
+  max-width: 48rem;
+  gap: var(--cds-spacing-07);
+}
+
+.doc-lead {
+  margin: 0;
+  color: var(--cds-text-primary);
+  font-size: var(--cds-heading-03-font-size);
+  font-weight: var(--cds-heading-03-font-weight);
+  line-height: var(--cds-heading-03-line-height);
+}
+
+.doc-paragraphs {
+  display: grid;
+  gap: var(--cds-spacing-05);
+}
+
+.doc-paragraphs p {
+  margin: 0;
+  color: var(--cds-text-secondary);
+}
+
+.doc-body code {
+  padding: 0 var(--cds-spacing-02);
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-primary);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--cds-body-compact-01-font-size);
+}
+
+.doc-body a {
   color: var(--cds-link-primary);
 }
 
 @media (max-width: 66rem) {
-  .app-main {
-    margin-left: 0;
-  }
-
   .playground-grid,
   .inventory-grid {
     grid-template-columns: 1fr;
