@@ -55,7 +55,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     // The outer container: dark theme, holds the page header, the
     // background gutter revealed around the scaled-down card, and the
     // right side panel — everything except the actual page content.
-    <div className="dark bg-background text-foreground flex min-h-svh flex-col">
+    <div
+      className={cn(
+        'dark bg-background text-foreground flex flex-col',
+        fullBleedPaths.includes(pathname) ? 'h-svh overflow-hidden' : 'min-h-svh',
+      )}
+    >
       <div
         className={cn(
           'grid shrink-0 transition-[grid-template-rows]',
@@ -70,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <SidebarProvider open={expanded} onOpenChange={setExpanded} className="min-h-0 flex-1">
+      <SidebarProvider open={expanded} onOpenChange={setExpanded} className="min-h-0! flex-1">
         {/* SidebarInset is rendered before Sidebar so the sidebar's in-flow
             spacer reserves space at the end of the flex row (the right edge)
             instead of the start — required for a right-docked sidebar. The
@@ -78,7 +83,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             while everything around it (this outer container) stays dark. */}
         <SidebarInset
           className={cn(
-            'light bg-background text-foreground origin-center transition-transform',
+            'light bg-background text-foreground origin-center transition-transform min-h-0',
             TRANSITION,
             expanded && 'scale-[0.97] overflow-hidden',
           )}
@@ -104,7 +109,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
           <main
             id="main-content"
-            className={cn('flex flex-1 flex-col', fullBleedPaths.includes(pathname) ? 'overflow-hidden' : 'px-8 py-8')}
+            className={cn(
+              'flex min-h-0 flex-1 flex-col',
+              fullBleedPaths.includes(pathname) ? 'overflow-hidden' : 'px-8 py-8',
+            )}
           >
             {children}
           </main>
