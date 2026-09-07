@@ -11,10 +11,10 @@ const packageSource = JSON.parse(readFileSync(packagePath, 'utf8'));
 
 const appDir = resolve(root, 'src/app');
 const componentsDir = resolve(root, 'src/components');
-const teamManagementPath = resolve(componentsDir, 'team-management.tsx');
+const playgroundPath = resolve(componentsDir, 'cargoplot-inbox.tsx');
 const globalsCssPath = resolve(appDir, 'globals.css');
 
-const teamManagementSource = readFileSync(teamManagementPath, 'utf8');
+const playgroundSource = readFileSync(playgroundPath, 'utf8');
 const globalsCssSource = readFileSync(globalsCssPath, 'utf8');
 
 const failures = [];
@@ -37,7 +37,7 @@ function walk(dir, extensions) {
 
 const appSourceFiles = [...walk(appDir, ['.tsx', '.ts']), ...walk(componentsDir, ['.tsx', '.ts'])];
 
-function requireSource(label, fragments, source = teamManagementSource) {
+function requireSource(label, fragments, source = playgroundSource) {
   const missing = fragments.filter((fragment) => !source.includes(fragment));
   if (missing.length > 0) {
     fail(`${label}: missing ${missing.join(', ')}`);
@@ -83,20 +83,26 @@ if (arbitraryColorFile) fail(`Arbitrary bracket-value color class found in ${arb
 else pass('No arbitrary bracket-value color classes found in app code');
 
 // 5. Pattern/state/accessibility checks against the Playground reference implementation.
-requireSource('Record-management composition', [
+requireSource('Search, filter, and detail composition', [
   "from '@/components/ui/input'",
   "from '@/components/ui/select'",
-  "from '@/components/ui/table'",
+  "from '@/components/ui/tabs'",
   "from '@/components/ui/badge'",
   "from '@/components/ui/dropdown-menu'",
   "from '@/components/ui/dialog'",
   "from '@/components/ui/alert-dialog'",
+  "from '@/components/ui/command'",
+  "from '@/components/ui/accordion'",
 ]);
 
-requireSource('Destructive-action confirmation', ['AlertDialog', 'Revoke access', 'onClick={handleRevoke}']);
-requireSource('Search and role filter target the member dataset', ['visibleMembers', 'searchQuery', 'roleFilter', 'members.filter']);
-requireSource('Required data states', ["loadState === 'loading'", "loadState === 'error'", 'members.length === 0', 'visibleMembers.length === 0']);
-requireSource('Accessible control naming', ['htmlFor="team-member-search"', 'htmlFor="team-role-filter"', 'aria-label={`Actions for ${member.name}`}']);
+requireSource('Destructive-action confirmation', ['AlertDialog', 'Delete conversation', 'onClick={deleteConversation}']);
+requireSource('Search and filters target the conversation dataset', ['displayed', 'query', 'filter', 'items.filter']);
+requireSource('Required data states', ['switching', 'No messages match', 'checkedIds.size > 0']);
+requireSource('Accessible control naming', [
+  'aria-label={`Select conversation with ${conversation.name}`}',
+  'aria-label={`Delete conversation with ${selected.name}`}',
+  'aria-label="Notifications"',
+]);
 
 // 6. Commands declared by the active adapter's manifest.
 const commands = [

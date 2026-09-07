@@ -74,25 +74,34 @@ export function AppShell({ children }: { children: ReactNode }) {
             while everything around it (this outer container) stays dark. */}
         <SidebarInset
           className={cn(
-            'light bg-background text-foreground origin-center transition-[transform,border-radius]',
+            'light bg-background text-foreground origin-center transition-transform',
             TRANSITION,
-            expanded && 'scale-[0.97] overflow-hidden rounded-xl',
+            expanded && 'scale-[0.97] overflow-hidden',
           )}
         >
-          {/* The single menu toggle lives inside the content card itself —
+          {/* The single toggle lives inside the content card itself —
               pinned to the corner of the actual page viewport, not the
               outer browser window — so it moves and scales with the card
-              instead of floating fixed above everything. */}
+              instead of floating fixed above everything. Clipped to a
+              corner-ribbon triangle rather than a plain square icon button. */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-4 right-4 z-10"
+            className="absolute top-0 right-0 z-10 size-12 rounded-none hover:bg-transparent hover:opacity-90"
             aria-label={expanded ? 'Collapse view' : 'Expand view'}
             onClick={toggle}
           >
-            <ArrowUpRight />
+            <span
+              aria-hidden
+              className="bg-foreground pointer-events-none absolute inset-0"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+            />
+            <ArrowUpRight className="text-background relative size-4 translate-x-1.5 -translate-y-1.5" />
           </Button>
-          <main id="main-content" className="flex-1 px-8 py-8">
+          <main
+            id="main-content"
+            className={cn('flex flex-1 flex-col', pathname === '/playground' ? 'overflow-hidden' : 'px-8 py-8')}
+          >
             {children}
           </main>
         </SidebarInset>

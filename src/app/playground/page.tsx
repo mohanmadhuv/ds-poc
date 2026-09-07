@@ -1,10 +1,5 @@
-import { Suspense } from 'react';
-import { TeamManagement } from '@/components/team-management';
+import { CargoplotInbox } from '@/components/cargoplot-inbox';
 
 export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <TeamManagement />
-    </Suspense>
-  );
+  return <CargoplotInbox />;
 }
