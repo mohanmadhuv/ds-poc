@@ -43,11 +43,11 @@ export const BRAND_PALE = '#ebf0fa';
 export const sharp = 'rounded-none';
 
 const navItems = [
-  { icon: Grip, label: 'Dashboard', href: undefined },
+  { icon: Grip, label: 'Dashboard', href: '/' },
   { icon: SearchIcon, label: 'Inquiries', href: '/inquiries' },
   { icon: Box, label: 'Shipments', href: undefined },
   { icon: Store, label: 'Deliveries', href: undefined },
-  { icon: MessagesSquare, label: 'Messages', href: '/' },
+  { icon: MessagesSquare, label: 'Messages', href: '/messages' },
   { icon: Banknote, label: 'Invoices', href: undefined },
   { icon: Star, label: 'Favorite routes', href: undefined },
   { icon: Contact, label: 'Address book', href: undefined },
