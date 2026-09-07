@@ -1,27 +1,15 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Image from 'next/image';
-import { Sora, Instrument_Sans } from 'next/font/google';
+import { Sora } from 'next/font/google';
 import { toast } from 'sonner';
 import {
-  Banknote,
-  Bell,
-  Box,
   Check,
-  ChevronsUpDown,
-  Contact,
-  Grip,
   Mail,
-  MessagesSquare,
   Paperclip,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   Search as SearchIcon,
   Send,
-  Star,
-  Store,
   Trash2,
 } from 'lucide-react';
 
@@ -39,13 +27,11 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -58,6 +44,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
 import { conversations as initialConversations, teammates, type Conversation } from '@/fixtures/inbox';
+import { BRAND_DARK, BRAND_MINT, BRAND_PALE, CargoplotShell, sharp } from '@/components/cargoplot-shell';
 
 // Brand foundations from cargoplot.com (design-system/adapters/shadcn.md and
 // the Brand foundations page): Sora for headings, Instrument Sans for body,
@@ -65,29 +52,10 @@ import { conversations as initialConversations, teammates, type Conversation } f
 // shape language is scoped to this mock product only, via `sharp` below; it
 // does not apply to this tool's own chrome.
 const sora = Sora({ subsets: ['latin'], weight: ['600', '700'] });
-const instrumentSans = Instrument_Sans({ subsets: ['latin'], weight: ['400', '500', '600'] });
-
-const BRAND_DARK = '#002d28';
-const BRAND_MINT = '#39f2af';
-const BRAND_PALE = '#ebf0fa';
-
-const sharp = 'rounded-none';
-
-const navItems = [
-  { icon: Grip, label: 'Dashboard' },
-  { icon: SearchIcon, label: 'Inquiries' },
-  { icon: Box, label: 'Shipments' },
-  { icon: Store, label: 'Deliveries' },
-  { icon: MessagesSquare, label: 'Messages', active: true },
-  { icon: Banknote, label: 'Invoices' },
-  { icon: Star, label: 'Favorite routes' },
-  { icon: Contact, label: 'Address book' },
-];
 
 const allTags = ['Urgent', 'Customs', 'Routing', 'Documentation', 'Delay', 'Booking'];
 
 export function CargoplotInbox() {
-  const [navCollapsed, setNavCollapsed] = useState(false);
   const [items, setItems] = useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
@@ -194,128 +162,20 @@ export function CargoplotInbox() {
   }
 
   return (
-    <div className={cn(instrumentSans.className, 'flex h-full min-h-0 w-full flex-1 overflow-hidden')}>
-      {/* Nested AppShell: CargoPlot's own product navigation, composed from
-          Button/Avatar/Menu primitives rather than reusing this tool's
-          top-level Sidebar system (that machinery is scoped to this app's
-          own chrome, not the product being designed inside the Playground). */}
-      <aside
-        className={cn(
-          'relative flex shrink-0 flex-col text-white transition-[width] duration-200 ease-in-out',
-          navCollapsed ? 'w-14' : 'w-56',
-        )}
-        style={{ backgroundColor: BRAND_DARK }}
-      >
-        <div className={cn('flex items-center px-4 py-5', navCollapsed && 'justify-center px-0')}>
-          {navCollapsed ? (
-            <Image src="/cargoplot-mark.png" alt="CargoPlot" width={200} height={200} className="size-7 rounded-sm" priority />
-          ) : (
-            <Image src="/cargoplot-logo.png" alt="CargoPlot" width={944} height={206} className="h-6 w-auto" priority />
-          )}
-        </div>
-        {/* Collapse handle sits on the sidebar's own edge, straddling the
-            boundary with the content pane, rather than living inline in the
-            header row — the conventional placement for this control. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-5 -right-3.5 z-20 size-7 rounded-full border border-white/10 text-white/70 shadow-sm hover:bg-white/10 hover:text-white"
-          style={{ backgroundColor: BRAND_DARK }}
-          aria-label={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onClick={() => setNavCollapsed((value) => !value)}
-        >
-          {navCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-        </Button>
-        <nav className="flex flex-1 flex-col gap-0.5 px-2">
-          {navItems.map((item) => (
-            <Button
-              key={item.label}
-              variant="ghost"
-              title={navCollapsed ? item.label : undefined}
-              aria-label={item.label}
-              className={cn(
-                sharp,
-                'h-9 gap-2.5 px-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white',
-                navCollapsed ? 'justify-center px-0' : 'justify-start',
-                item.active && 'bg-white/10 text-white',
-              )}
-              style={item.active ? { color: BRAND_MINT } : undefined}
-            >
-              <item.icon className="size-4 shrink-0" />
-              {!navCollapsed && item.label}
-            </Button>
-          ))}
-        </nav>
-        <div className={cn('flex items-center gap-2 border-t border-white/10 px-3 py-3', navCollapsed && 'justify-center px-0')}>
-          <Avatar className="size-8 shrink-0">
-            <AvatarFallback className="text-xs" style={{ backgroundColor: BRAND_MINT, color: BRAND_DARK }}>
-              AL
-            </AvatarFallback>
-          </Avatar>
-          {!navCollapsed && (
-            <>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">Alex Lindgren</p>
-                <p className="truncate text-xs text-white/60">Operations Lead</p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-7 text-white/60 hover:bg-white/10 hover:text-white">
-                    <ChevronsUpDown className="size-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Account settings</DropdownMenuItem>
-                  <DropdownMenuItem>Switch workspace</DropdownMenuItem>
-                  <DropdownMenuItem variant="destructive">Sign out</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          )}
-        </div>
-      </aside>
-
-      <div className="light bg-background text-foreground flex min-h-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-4 border-b px-6">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="#" className={cn(sora.className, 'font-semibold')}>
-                  CargoPlot
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className={cn(sora.className, 'font-semibold')}>Inbox</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="relative ml-auto w-72">
-            <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-            <Input placeholder="Search cargo, routes..." className={cn(sharp, 'pl-8')} />
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className={cn(sharp, 'relative')} aria-label="Notifications">
-                <Bell className="size-4" />
-                {unreadCount > 0 && (
-                  <span
-                    className="absolute top-1.5 right-1.5 size-1.5 rounded-full"
-                    style={{ backgroundColor: BRAND_MINT }}
-                  />
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className={cn(sharp, 'w-72')}>
-              <p className="text-sm font-medium">Notifications</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {unreadCount} unread message{unreadCount === 1 ? '' : 's'} in your inbox.
-              </p>
-            </PopoverContent>
-          </Popover>
-        </header>
-
-        <div className="flex min-h-0 flex-1">
+    <CargoplotShell
+      crumb="Inbox"
+      hasNotification={unreadCount > 0}
+      notifications={
+        <>
+          <p className="text-sm font-medium">Notifications</p>
+          <p className="text-muted-foreground mt-1 text-xs">
+            {unreadCount} unread message{unreadCount === 1 ? '' : 's'} in your inbox.
+          </p>
+        </>
+      }
+    >
+      <>
+      <div className="flex min-h-0 flex-1">
           {/* List pane */}
           <div className="flex w-96 min-h-0 shrink-0 flex-col border-r">
             <div className="flex items-center gap-2 border-b p-3">
@@ -641,7 +501,6 @@ export function CargoplotInbox() {
             )}
           </div>
         </div>
-      </div>
 
       <Dialog open={newMessageOpen} onOpenChange={setNewMessageOpen}>
         <DialogContent className={sharp}>
@@ -686,6 +545,7 @@ export function CargoplotInbox() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </>
+    </CargoplotShell>
   );
 }

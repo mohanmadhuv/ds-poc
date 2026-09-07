@@ -24,6 +24,11 @@ const navItems = [
   { href: '/brand-foundations', label: 'Brand foundations' },
 ];
 
+// Playground product screens render their own full-bleed shell (product nav,
+// header, etc.) and manage their own scrolling, so they opt out of this
+// tool's default content padding.
+const fullBleedPaths = ['/', '/inquiries'];
+
 // Matches the easing Squarespace's own editor uses when swapping its canvas
 // between editing chrome and a clean live preview.
 const TRANSITION = 'duration-150 ease-[cubic-bezier(0.32,0.94,0.6,1)]';
@@ -99,7 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Button>
           <main
             id="main-content"
-            className={cn('flex flex-1 flex-col', pathname === '/' ? 'overflow-hidden' : 'px-8 py-8')}
+            className={cn('flex flex-1 flex-col', fullBleedPaths.includes(pathname) ? 'overflow-hidden' : 'px-8 py-8')}
           >
             {children}
           </main>
