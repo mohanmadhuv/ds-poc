@@ -1,25 +1,27 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { Sora, Instrument_Sans } from 'next/font/google';
 import { toast } from 'sonner';
 import {
-  BookOpen,
+  Banknote,
   Bell,
+  Box,
   Check,
   ChevronsUpDown,
-  CircleHelp,
-  Layers,
-  LayoutDashboard,
+  Contact,
+  Grip,
   Mail,
-  Map,
-  Package,
+  MessagesSquare,
   Paperclip,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
-  Receipt,
   Search as SearchIcon,
   Send,
-  Ship,
+  Star,
+  Store,
   Trash2,
 } from 'lucide-react';
 
@@ -72,19 +74,20 @@ const BRAND_PALE = '#ebf0fa';
 const sharp = 'rounded-none';
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard' },
-  { icon: CircleHelp, label: 'Inquiries' },
-  { icon: Ship, label: 'Shipments' },
-  { icon: Package, label: 'Containers' },
-  { icon: Mail, label: 'Inbox', active: true },
-  { icon: Receipt, label: 'Invoices' },
-  { icon: Map, label: 'Routes' },
-  { icon: BookOpen, label: 'Address Book' },
+  { icon: Grip, label: 'Dashboard' },
+  { icon: SearchIcon, label: 'Inquiries' },
+  { icon: Box, label: 'Shipments' },
+  { icon: Store, label: 'Deliveries' },
+  { icon: MessagesSquare, label: 'Messages', active: true },
+  { icon: Banknote, label: 'Invoices' },
+  { icon: Star, label: 'Favorite routes' },
+  { icon: Contact, label: 'Address book' },
 ];
 
 const allTags = ['Urgent', 'Customs', 'Routing', 'Documentation', 'Delay', 'Booking'];
 
 export function CargoplotInbox() {
+  const [navCollapsed, setNavCollapsed] = useState(false);
   const [items, setItems] = useState<Conversation[]>(initialConversations);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
@@ -196,52 +199,79 @@ export function CargoplotInbox() {
           Button/Avatar/Menu primitives rather than reusing this tool's
           top-level Sidebar system (that machinery is scoped to this app's
           own chrome, not the product being designed inside the Playground). */}
-      <aside className="flex w-56 shrink-0 flex-col text-white" style={{ backgroundColor: BRAND_DARK }}>
-        <div className={cn(sora.className, 'flex items-center gap-2 px-4 py-5 text-base font-bold')}>
-          <span className={cn(sharp, 'flex size-7 items-center justify-center')} style={{ backgroundColor: BRAND_MINT }}>
-            <Layers className="size-4" style={{ color: BRAND_DARK }} />
-          </span>
-          CargoPlot
+      <aside
+        className={cn(
+          'relative flex shrink-0 flex-col text-white transition-[width] duration-200 ease-in-out',
+          navCollapsed ? 'w-14' : 'w-56',
+        )}
+        style={{ backgroundColor: BRAND_DARK }}
+      >
+        <div className={cn('flex items-center px-4 py-5', navCollapsed && 'justify-center px-0')}>
+          {navCollapsed ? (
+            <Image src="/cargoplot-mark.png" alt="CargoPlot" width={200} height={200} className="size-7 rounded-sm" priority />
+          ) : (
+            <Image src="/cargoplot-logo.png" alt="CargoPlot" width={944} height={206} className="h-6 w-auto" priority />
+          )}
         </div>
+        {/* Collapse handle sits on the sidebar's own edge, straddling the
+            boundary with the content pane, rather than living inline in the
+            header row — the conventional placement for this control. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-5 -right-3.5 z-20 size-7 rounded-full border border-white/10 text-white/70 shadow-sm hover:bg-white/10 hover:text-white"
+          style={{ backgroundColor: BRAND_DARK }}
+          aria-label={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() => setNavCollapsed((value) => !value)}
+        >
+          {navCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </Button>
         <nav className="flex flex-1 flex-col gap-0.5 px-2">
           {navItems.map((item) => (
             <Button
               key={item.label}
               variant="ghost"
+              title={navCollapsed ? item.label : undefined}
+              aria-label={item.label}
               className={cn(
                 sharp,
-                'h-9 justify-start gap-2.5 px-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white',
+                'h-9 gap-2.5 px-2.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white',
+                navCollapsed ? 'justify-center px-0' : 'justify-start',
                 item.active && 'bg-white/10 text-white',
               )}
               style={item.active ? { color: BRAND_MINT } : undefined}
             >
-              <item.icon className="size-4" />
-              {item.label}
+              <item.icon className="size-4 shrink-0" />
+              {!navCollapsed && item.label}
             </Button>
           ))}
         </nav>
-        <div className="flex items-center gap-2 border-t border-white/10 px-3 py-3">
-          <Avatar className="size-8">
+        <div className={cn('flex items-center gap-2 border-t border-white/10 px-3 py-3', navCollapsed && 'justify-center px-0')}>
+          <Avatar className="size-8 shrink-0">
             <AvatarFallback className="text-xs" style={{ backgroundColor: BRAND_MINT, color: BRAND_DARK }}>
               AL
             </AvatarFallback>
           </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">Alex Lindgren</p>
-            <p className="truncate text-xs text-white/60">Operations Lead</p>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-7 text-white/60 hover:bg-white/10 hover:text-white">
-                <ChevronsUpDown className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem>Account settings</DropdownMenuItem>
-              <DropdownMenuItem>Switch workspace</DropdownMenuItem>
-              <DropdownMenuItem variant="destructive">Sign out</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!navCollapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">Alex Lindgren</p>
+                <p className="truncate text-xs text-white/60">Operations Lead</p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="size-7 text-white/60 hover:bg-white/10 hover:text-white">
+                    <ChevronsUpDown className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>Account settings</DropdownMenuItem>
+                  <DropdownMenuItem>Switch workspace</DropdownMenuItem>
+                  <DropdownMenuItem variant="destructive">Sign out</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
         </div>
       </aside>
 
