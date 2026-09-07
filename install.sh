@@ -13,5 +13,5 @@ cp "$SOURCE_DIR/AGENTS.md" "$TARGET_DIR/AGENTS.md"
 mkdir -p "$TARGET_DIR/agent"
 cp "$SOURCE_DIR"/agent/*.md "$TARGET_DIR/agent/"
 
-echo "Installed Carbon agentic POC instructions into: $(cd "$TARGET_DIR" && pwd)"
+echo "Installed agentic POC instructions into: $(cd "$TARGET_DIR" && pwd)"
 echo "Next: run Codex from that repository and ask it to read AGENTS.md and inspect the codebase."

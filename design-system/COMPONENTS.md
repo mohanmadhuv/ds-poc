@@ -1,9 +1,7 @@
-# Carbon SaaS POC — Approved Component Set
+# SaaS POC — Approved Component Set
 
-> Exactly 30 component families are approved for the first POC.
-> Use these deeply before expanding the inventory.
-
-The installed Carbon packages are authoritative for exact React APIs and supported variants. This file describes **product intent, selection logic, and composition**, not prop signatures.
+> Exactly 30 component families are approved for this POC.
+> These names are brand- and library-agnostic. The active adapter (see `design-system/ACTIVE.md`) is authoritative for exact React APIs, install commands, and supported variants — this file describes **product intent, selection logic, and composition**, not any specific library's prop signatures.
 
 ## Component-selection rule
 
@@ -12,7 +10,7 @@ Before creating custom UI:
 1. identify the user's task;
 2. identify the interaction pattern;
 3. choose from this approved set;
-4. inspect the installed Carbon Storybook/package for the current API;
+4. read the active adapter's doc (`design-system/adapters/<name>.md`) for the current API and, for families it doesn't ship natively, its documented composition recipe;
 5. compose components according to `agent/04-composition-rules.md`.
 
 ---
@@ -33,7 +31,7 @@ Rules:
 - use destructive treatment only for truly destructive actions;
 - do not use a Link when state is mutated.
 
-Pairs with: Modal, Form inputs, DataTable toolbar, Notification.
+Pairs with: Dialog, form inputs, DataTable toolbar, Notification.
 
 ### 02. IconButton
 **Purpose:** compact action where the icon is conventional and space is constrained.
@@ -47,9 +45,9 @@ Use for:
 Rules:
 - accessible name required;
 - tooltip where needed for comprehension;
-- prefer text Button for unfamiliar or high-consequence actions.
+- prefer a text Button for unfamiliar or high-consequence actions.
 
-### 03. OverflowMenu
+### 03. Menu
 **Purpose:** lower-frequency contextual actions.
 
 Use for:
@@ -57,14 +55,14 @@ Use for:
 - edit / duplicate / archive / revoke / delete clusters
 
 Rules:
-- never hide the primary task inside overflow;
+- never hide the primary task inside a menu;
 - destructive menu actions still require confirmation where consequences are meaningful.
 
 ---
 
 ## B. Form inputs and configuration
 
-### 04. TextInput
+### 04. TextField
 **Purpose:** short free-form value.
 
 Use for names, titles, identifiers, short configuration values.
@@ -78,7 +76,7 @@ Use for descriptions, notes, messages, rationale.
 
 Do not use for structured data that should be separate fields.
 
-### 06. NumberInput
+### 06. NumberField
 **Purpose:** numeric input with numeric semantics.
 
 Use for quantities, thresholds, limits, capacities.
@@ -90,14 +88,14 @@ Define units in label/helper text where ambiguity is possible.
 
 Use when a native-like bounded single choice is sufficient.
 
-Prefer RadioButtonGroup when a very small set benefits from visible comparison.
+Prefer RadioGroup when a very small set benefits from visible comparison.
 
-### 08. Dropdown
-**Purpose:** richer bounded single selection.
+### 08. ComboBox
+**Purpose:** richer bounded single selection, typically with search.
 
-Use when options are better presented through Carbon's dropdown interaction than a compact Select.
+Use when options are better presented through a searchable list interaction than a compact Select.
 
-Do not use for free-form search.
+Do not use for genuinely free-form search over an open-ended corpus.
 
 ### 09. MultiSelect
 **Purpose:** choose several options from a bounded set.
@@ -111,19 +109,19 @@ Avoid when the option set is enormous and requires a different discovery model.
 
 Use for optional choices that can coexist.
 
-Do not use a lone checkbox to represent an immediate system setting when Toggle communicates the state more clearly.
+Do not use a lone checkbox to represent an immediate system setting when Switch communicates the state more clearly.
 
-### 11. RadioButtonGroup
+### 11. RadioGroup
 **Purpose:** exactly one choice from a small visible set.
 
 Use when users benefit from comparing all choices before deciding.
 
-### 12. Toggle
+### 12. Switch
 **Purpose:** immediate on/off setting.
 
 Use for reversible settings with an understandable resulting state.
 
-Do not use as a substitute for a Submit button.
+Do not use as a substitute for a Submit action.
 
 ### 13. DatePicker
 **Purpose:** date or date-range input.
@@ -153,7 +151,7 @@ Search should visibly affect a defined content region.
 Use when multiple records share attributes.
 
 Typical composition:
-`Search + filters + DataTable + Tag + OverflowMenu + Pagination`
+`Search + filters + DataTable + Badge + Menu + Pagination`
 
 Rules:
 - accessible table name required;
@@ -169,7 +167,7 @@ Use with DataTable when record count justifies paging.
 
 Do not paginate tiny demo datasets merely to show the component.
 
-### 17. Tag
+### 17. Badge
 **Purpose:** concise status or categorical metadata.
 
 Use for:
@@ -180,17 +178,17 @@ Use for:
 
 Rules:
 - text must carry meaning without color;
-- avoid tag overload.
+- avoid badge overload.
 
-### 18. Tile
+### 18. Card
 **Purpose:** grouped summary, contained object, or small decision surface.
 
 Use for:
 - KPI summaries
 - high-level resource summary
-- small option sets when tile semantics fit
+- small option sets when card semantics fit
 
-Do not use tiles as the default representation for records that should be compared in columns.
+Do not use cards as the default representation for records that should be compared in columns.
 
 ### 19. Tabs
 **Purpose:** switch between peer views while preserving context.
@@ -212,14 +210,15 @@ Do not hide information required to complete the primary task.
 
 ## D. Overlays, feedback, and workflow state
 
-### 21. Modal
+### 21. Dialog
 **Purpose:** focused short task, decision, or confirmation without leaving page context.
 
 Strong uses:
 - invite member
-- confirm revoke access
-- confirm delete
 - short edit form
+- confirm a non-destructive decision
+
+For destructive confirmation specifically, use the adapter's dedicated destructive-confirmation treatment (an "alert dialog" variant) rather than a generic Dialog — see the active adapter's family binding.
 
 Avoid for:
 - long multi-step creation
@@ -227,14 +226,14 @@ Avoid for:
 - tasks that require substantial page context
 
 ### 22. Notification
-**Family includes:** inline and toast notification variants available in installed Carbon.
+**Family includes:** inline and transient (toast) notification variants available in the active adapter.
 
 **Purpose:** communicate system feedback and important state.
 
 Use inline when feedback belongs to a region/form.
-Use toast when short-lived global confirmation is appropriate.
+Use a transient/toast notification when short-lived global confirmation is appropriate.
 
-Do not stack repetitive success toasts for trivial actions.
+Do not stack repetitive success notifications for trivial actions.
 
 ### 23. Loading
 **Purpose:** communicate ongoing processing.
@@ -267,21 +266,21 @@ Use when users can arrive several levels deep in an information architecture.
 
 Omit when hierarchy is flat and the breadcrumb adds no orientation value.
 
-### 27. UI Shell
-**Family includes:** Carbon Header and SideNav primitives required to form the stable application shell.
+### 27. AppShell
+**Family includes:** the persistent navigation/identity primitives required to form the stable application shell (a header and/or a collapsible side navigation).
 
 **Purpose:** global product navigation and identity.
 
 Rules:
-- keep shell stable across generated scenarios;
+- keep the shell stable across generated scenarios;
 - feature prompts should usually change the page body, not reinvent navigation;
-- do not turn local filters into side navigation.
+- do not turn local filters into shell-level navigation.
 
 ---
 
 ## F. Data visualization
 
-Data visualization uses `@carbon/charts-react` and follows `design-system/DESIGN.md`.
+Data visualization uses whatever chart binding the active adapter declares (see its family-binding table), following `design-system/DESIGN.md` §7.
 
 ### 28. BarChart
 **Purpose:** compare discrete categories.
@@ -323,24 +322,24 @@ These are recipes, not templates.
 
 ## Record management
 
-`UI Shell + Breadcrumb + page header + Search + filter controls + DataTable + Tag + OverflowMenu + Pagination + Modal + Notification`
+`AppShell + Breadcrumb + page header + Search + filter controls + DataTable + Badge + Menu + Pagination + Dialog + Notification`
 
 Use for members, customers, devices, invoices, environments, integrations, jobs.
 
 ## Monitoring and operations
 
-`UI Shell + page header + Tile summaries + BarChart/LineChart when justified + Tabs + filters + DataTable + Tag + Notification`
+`AppShell + page header + Card summaries + BarChart/LineChart when justified + Tabs + filters + DataTable + Badge + Notification`
 
 Use for incidents, services, deployments, jobs, usage, reliability.
 
 ## Multi-step creation
 
-`UI Shell + Breadcrumb + page header + ProgressIndicator + grouped form inputs + validation + review step + Button + Notification`
+`AppShell + Breadcrumb + page header + ProgressIndicator + grouped form inputs + validation + review step + Button + Notification`
 
 Use for deploying an application, creating an environment, onboarding an integration, configuring a policy.
 
 ## Settings/detail
 
-`UI Shell + Breadcrumb + page header + Tabs + form inputs + Toggle/Checkbox + Accordion for advanced options + Button + Notification`
+`AppShell + Breadcrumb + page header + Tabs + form inputs + Switch/Checkbox + Accordion for advanced options + Button + Notification`
 
 Use for configuration, permissions, integration settings, account policies.

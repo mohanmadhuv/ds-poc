@@ -26,7 +26,7 @@ R16. Put validation near the field/problem and provide a useful corrective messa
 R17. Do not require users to remember information from earlier steps when it can be summarized at review.
 
 ## Status rules
-R18. Use Tag or appropriate Carbon status treatment for compact categorical status.
+R18. Use Badge or the active adapter's appropriate status treatment for compact categorical status.
 R19. Status text must remain understandable without color.
 R20. Prioritize severity/status ordering only when it supports the user's decision.
 
@@ -51,16 +51,16 @@ R33. Loading feedback should be scoped to what is loading; avoid blocking unrela
 R34. Error states should tell the user what failed and what they can do next.
 
 ## Layout rules
-R35. Use Carbon spacing/layout tokens or existing project utilities tied to them.
+R35. Use the active design system's spacing/layout tokens or existing project utilities tied to them.
 R36. Prefer clear page hierarchy: title/context -> actions -> controls -> content -> secondary detail.
 R37. Avoid oversized cards, excessive rounded containers, decorative gradients, and arbitrary dashboard chrome.
 R38. Dense enterprise interfaces should gain clarity from alignment, grouping, and hierarchy rather than excessive whitespace.
 
 ## Custom component rule
 R39. Before creating any custom component, explicitly check:
-1. Is there an installed Carbon component?
+1. Is there a component in the active adapter (`design-system/adapters/<name>.md`)?
 2. Is there an existing project component?
-3. Can an existing pattern compose the behavior?
+3. Can an existing pattern, or a documented composition recipe in the adapter doc, compose the behavior?
 Only proceed if all are insufficient.
 
 ## Precision rule

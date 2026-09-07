@@ -2,7 +2,7 @@
 
 Run this after generation and before completion.
 
-The repository validator is `pnpm validate:design-system`. Run it after the manual review below; it checks the current generated surface for Carbon vocabulary, pattern composition, token discipline, required states, accessibility markers, and build/lint/typecheck results.
+The repository validator is `pnpm validate:design-system`. Run it after the manual review below; it checks the current generated surface against the active adapter's vocabulary (from `design-system/active-system.json`), pattern composition, token discipline, required states, accessibility markers, and build/lint/typecheck results.
 
 ## 0. UI plan conformance
 
@@ -10,7 +10,7 @@ The repository validator is `pnpm validate:design-system`. Run it after the manu
 - [ ] Every listed intent has a visible or reachable supporting interaction.
 - [ ] The primary pattern is recognizable in the page anatomy.
 - [ ] Secondary patterns are used only where they support the primary task.
-- [ ] Every listed composition item is implemented with Carbon or an existing project component, or its documented gap is intentional.
+- [ ] Every listed composition item is implemented with an active-adapter or existing project component, or its documented gap is intentional.
 - [ ] Every listed state is implemented, reachable, or explicitly documented as out of scope with a reason.
 
 ## A. Intent and UX
@@ -20,11 +20,11 @@ The repository validator is `pnpm validate:design-system`. Run it after the manu
 - [ ] The chosen pattern matches the task.
 - [ ] No unrelated vanity content was added.
 
-## B. Carbon system fidelity
-- [ ] Existing Carbon components are used where available.
-- [ ] No Carbon component was recreated with custom HTML/CSS without necessity.
-- [ ] Spacing, typography, color, radius, and layout follow Carbon/project tokens and conventions.
-- [ ] Table/search/filter/pagination composition follows established Carbon conventions where applicable.
+## B. Design-system fidelity
+- [ ] Existing active-adapter components are used where available.
+- [ ] No active-adapter component was recreated with custom HTML/CSS without necessity.
+- [ ] Spacing, typography, color, radius, and layout follow the active adapter's/project's tokens and conventions.
+- [ ] Table/search/filter/pagination composition follows established conventions from the active adapter where applicable.
 - [ ] Tabs are not being misused as process steps.
 
 ## C. Interaction quality
@@ -53,7 +53,7 @@ The repository validator is `pnpm validate:design-system`. Run it after the manu
 - [ ] Heading hierarchy is logical.
 
 ## F. Code quality
-- [ ] Uses current installed Carbon React APIs.
+- [ ] Uses the active adapter's current APIs.
 - [ ] Reuses project components/helpers where appropriate.
 - [ ] No unnecessary custom CSS.
 - [ ] Demo fixture data is separated cleanly from reusable UI logic.
@@ -61,8 +61,8 @@ The repository validator is `pnpm validate:design-system`. Run it after the manu
 - [ ] Existing tests/build/typecheck/lint are run when available.
 
 ## G. Demo provenance
-Where the POC supports a "Built with Carbon" inspector:
+Where the POC supports a "Built with <active system>" inspector:
 - [ ] Record selected pattern(s).
-- [ ] Record major Carbon components used.
+- [ ] Record major active-adapter components used.
 - [ ] Do not expose hidden chain-of-thought.
 - [ ] Show concise design-system provenance only.

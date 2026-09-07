@@ -1,5 +1,7 @@
 node_modules
-dist
+.next
 .DS_Store
 .pnpm-store
 .vercel
+next-env.d.ts
+*.tsbuildinfo

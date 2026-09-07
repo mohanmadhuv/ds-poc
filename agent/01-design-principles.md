@@ -16,10 +16,10 @@ Convert a request into:
 Do not start with visual layout.
 
 ## 2. System before invention
-The Carbon system is the default design vocabulary.
+The active design system (see `design-system/ACTIVE.md`) is the default design vocabulary.
 
 Use system components and system patterns first. Create custom UI only when:
-- no existing Carbon component or established project component satisfies the interaction need, and
+- no existing active-adapter component, documented composition recipe, or established project component satisfies the interaction need, and
 - the custom element represents a genuinely product-specific interaction rather than styling preference.
 
 ## 3. Patterns before isolated components
@@ -68,7 +68,7 @@ Examples:
 - important persistent page-level issue -> inline/callout/banner as appropriate
 - irreversible/destructive confirmation -> modal/dialog
 
-Carbon's notification guidance emphasizes relevant, timely, informative feedback and avoiding unnecessary disruption.
+Notification guidance across mature design systems converges on the same idea: relevant, timely, informative feedback that avoids unnecessary disruption.
 
 ## 8. Accessibility is structural
 Accessibility is not a final visual check.
@@ -92,6 +92,6 @@ Prefer structured hierarchy, tables, grouping, filters, tabs, and progressive di
 Avoid generic "AI dashboard" aesthetics.
 
 ## 10. Explainability through provenance
-When useful for the demo environment, keep enough implementation metadata to identify which Carbon patterns/components were used.
+When useful for the demo environment, keep enough implementation metadata to identify which patterns/components from the active design system were used.
 
-This metadata may power a "Built with Carbon" inspector, but should not clutter the primary product experience.
+This metadata may power a "Built with <active system>" inspector, but should not clutter the primary product experience.

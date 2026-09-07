@@ -20,7 +20,7 @@ pattern:
     - <supporting pattern name>
 
 composition:
-  - <Carbon component or existing project component>
+  - <active-adapter component or existing project component>
 
 states:
   - <loading | empty | no-results | error | success | permission | destructive-confirmation>
@@ -47,12 +47,12 @@ pattern:
 composition:
   - PageHeader
   - Search
-  - Dropdown
+  - Select
   - DataTable
-  - Tag
-  - OverflowMenu
-  - Modal
-  - InlineNotification
+  - Badge
+  - Menu
+  - Dialog
+  - Notification
 
 states:
   - loading
@@ -65,7 +65,7 @@ UI plan rules:
 
 - Normalize intents as user actions, not visual descriptions.
 - Select one primary pattern; secondary patterns must directly support it.
-- List components by role in the composition, not every nested Carbon primitive.
+- List components by role in the composition, not every nested primitive from the active adapter.
 - Include only states implied by the request, but do not omit consequential asynchronous, permission, or destructive states.
 - Use names from the pattern registry and approved component registry; do not invent pattern names without documenting the gap.
 - Do not expose hidden reasoning or chain-of-thought. The plan should contain decisions and implementation scope, not private deliberation.
@@ -79,7 +79,7 @@ Prompt
   -> intent analysis
   -> pattern selection
   -> UI plan
-  -> Carbon implementation
+  -> active-adapter implementation
   -> validation
 ```
 
@@ -88,7 +88,7 @@ Before writing JSX:
 1. Derive the user intents from the prompt.
 2. Select one primary pattern and any directly supporting patterns.
 3. Produce the UI plan in the format above.
-4. Resolve every composition entry to an installed Carbon component or an existing project component.
+4. Resolve every composition entry to a component from the active adapter or an existing project component.
 5. Map every listed state to an implementation state, fixture, or reachable interaction.
 
 While writing JSX:
@@ -96,7 +96,7 @@ While writing JSX:
 - The selected primary pattern determines the page anatomy and interaction model.
 - The composition list is the allowed starting vocabulary; add a component only when implementation semantics require it and record the reason in the detailed UX plan.
 - The states list is an implementation checklist, not optional copy guidance.
-- The generator must not replace a planned Carbon component with custom HTML/CSS when the installed package supports the need.
+- The generator must not replace a planned active-adapter component with custom HTML/CSS when the adapter supports the need.
 - The generator must preserve the plan's primary user intent and must not add unrelated dashboard content.
 
 Before completion, validate that:
@@ -140,7 +140,7 @@ layout:
   - "main content"
   - "detail/secondary content"
 
-carbon_components:
+components:
   - component: "DataTable"
     reason: "records share comparable attributes"
 
@@ -190,7 +190,7 @@ Do not select components merely to demonstrate breadth.
 At minimum consider loading, empty, no results, error, success, and destructive confirmation where relevant.
 
 ### Step 7 — Implement
-Use installed Carbon React components and existing project code.
+Use the active adapter's components and existing project code.
 
 ### Step 8 — Validate
 Run `06-validation-checklist.md` and fix violations.

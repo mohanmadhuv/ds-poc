@@ -1,6 +1,6 @@
 # 09 - Generation and Validation Protocol
 
-This protocol defines how the Carbon agent turns a product request into a trustworthy interface. It is the execution contract for the V3 instruction layer.
+This protocol defines how the design-system agent turns a product request into a trustworthy interface. It is the execution contract for the V3 instruction layer, and it is written to be independent of which design system is currently plugged in — see `design-system/ACTIVE.md`.
 
 ## Thesis
 
@@ -8,7 +8,7 @@ The agent must demonstrate that it can:
 
 1. understand product intent;
 2. choose an appropriate SaaS interaction pattern;
-3. compose only approved Carbon primitives and existing project components;
+3. compose only approved primitives from the active adapter and existing project components;
 4. account for consequential states and accessibility;
 5. validate the implementation before presenting it.
 
@@ -22,7 +22,7 @@ Prompt
   -> primary/secondary pattern selection
   -> compact UI plan
   -> detailed UX plan
-  -> Carbon implementation
+  -> active-adapter implementation
   -> design-system validation
   -> presented experience
 ```
@@ -59,7 +59,7 @@ The plan is an implementation contract:
 - `intents` become visible or reachable interactions;
 - `pattern.primary` determines the page anatomy;
 - `pattern.secondary` constrains supporting compositions;
-- `composition` resolves to approved Carbon/project components;
+- `composition` resolves to approved active-adapter/project components;
 - `states` become implementation and validation obligations.
 
 Output: inspectable UI plan, with no hidden reasoning or chain-of-thought.
@@ -70,17 +70,17 @@ Expand the UI plan only where needed to define information architecture, compone
 
 Output: concise implementation context that prevents semantic drift.
 
-### 5. Carbon implementation
+### 5. Active-adapter implementation
 
 Implement the plan using:
 
 - approved families in `design-system/COMPONENTS.md`;
-- Carbon runtime packages as the API authority;
+- the active adapter's doc (`design-system/ACTIVE.md` → `design-system/adapters/<name>.md`) as the API authority;
 - existing project components and patterns;
-- Carbon tokens and theme values;
+- the active adapter's tokens and theme values;
 - deterministic fixture data when a backend is out of scope.
 
-Do not create a direct prompt-to-JSX path. Do not add decorative content, unapproved UI systems, or custom controls that duplicate Carbon.
+Do not create a direct prompt-to-JSX path. Do not add decorative content, unapproved UI systems, or custom controls that duplicate a component the active adapter already provides.
 
 ### 6. Design-system validation
 
@@ -90,7 +90,7 @@ Validation must confirm:
 
 - plan intents are implemented;
 - selected patterns are recognizable;
-- composition uses approved Carbon/project components;
+- composition uses approved active-adapter/project components;
 - token discipline is preserved;
 - destructive actions have consequence-aware confirmation;
 - loading, empty, no-results, error, success, and permission states are handled when implied;
@@ -106,7 +106,7 @@ The agent must stop and repair before proceeding when:
 
 - no primary pattern can be justified;
 - the UI plan is missing or materially inconsistent with the request;
-- a composition item has no Carbon/project resolution;
+- a composition item has no active-adapter/project resolution;
 - a required state has no implementation path;
 - a destructive action lacks confirmation;
 - the validator or required code-quality checks fail.

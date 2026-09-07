@@ -1,6 +1,6 @@
 # 03 — Pattern Registry
 
-Carbon defines patterns as reusable combinations of components/templates that help users accomplish goals. Prefer these goal-level structures over assembling components ad hoc.
+Mature design systems define patterns as reusable combinations of components/templates that help users accomplish goals. Prefer these goal-level structures over assembling components ad hoc.
 
 ## P01 — Record management
 Use when users manage a collection of entities such as users, services, projects, invoices, devices, or environments.

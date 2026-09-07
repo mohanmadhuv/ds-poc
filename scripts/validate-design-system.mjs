@@ -1,21 +1,44 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 
 const root = process.cwd();
-const appPath = resolve(root, 'src/App.tsx');
-const stylesPath = resolve(root, 'src/styles.scss');
+const manifestPath = resolve(root, 'design-system/active-system.json');
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
 const packagePath = resolve(root, 'package.json');
-const appSource = readFileSync(appPath, 'utf8');
-const stylesSource = readFileSync(stylesPath, 'utf8');
 const packageSource = JSON.parse(readFileSync(packagePath, 'utf8'));
+
+const appDir = resolve(root, 'src/app');
+const componentsDir = resolve(root, 'src/components');
+const teamManagementPath = resolve(componentsDir, 'team-management.tsx');
+const globalsCssPath = resolve(appDir, 'globals.css');
+
+const teamManagementSource = readFileSync(teamManagementPath, 'utf8');
+const globalsCssSource = readFileSync(globalsCssPath, 'utf8');
 
 const failures = [];
 const pass = (message) => console.log(`PASS ${message}`);
 const fail = (message) => failures.push(message);
 
-function requireSource(label, fragments) {
-  const missing = fragments.filter((fragment) => !appSource.includes(fragment));
+function walk(dir, extensions) {
+  const results = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name === 'ui') continue; // adapter-owned primitives, not app code
+      results.push(...walk(full, extensions));
+    } else if (extensions.some((ext) => entry.name.endsWith(ext))) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+const appSourceFiles = [...walk(appDir, ['.tsx', '.ts']), ...walk(componentsDir, ['.tsx', '.ts'])];
+
+function requireSource(label, fragments, source = teamManagementSource) {
+  const missing = fragments.filter((fragment) => !source.includes(fragment));
   if (missing.length > 0) {
     fail(`${label}: missing ${missing.join(', ')}`);
     return;
@@ -23,68 +46,72 @@ function requireSource(label, fragments) {
   pass(label);
 }
 
-function requireStyles(label, fragments) {
-  const missing = fragments.filter((fragment) => !stylesSource.includes(fragment));
-  if (missing.length > 0) {
-    fail(`${label}: missing ${missing.join(', ')}`);
-    return;
-  }
-  pass(label);
-}
-
-const forbiddenPackages = [
-  'tailwindcss',
-  '@mui/',
-  '@chakra-ui/',
-  'styled-components',
-  'shadcn',
-];
+// 1. Dependency policy, driven by the active adapter's manifest.
 const dependencyNames = Object.keys({ ...packageSource.dependencies, ...packageSource.devDependencies });
-const forbiddenDependency = dependencyNames.find((name) => forbiddenPackages.some((value) => name === value || name.startsWith(value)));
-if (forbiddenDependency) fail(`Only Carbon runtime dependencies are allowed; found ${forbiddenDependency}`);
-else pass('No secondary design-system dependencies');
+const forbiddenDependency = (manifest.forbiddenDependencies ?? []).find((name) =>
+  dependencyNames.some((dep) => dep === name || dep.startsWith(`${name}/`)),
+);
+if (forbiddenDependency) fail(`Found a dependency forbidden by the active adapter (${manifest.name}): ${forbiddenDependency}`);
+else pass(`No dependencies forbidden by the active adapter (${manifest.name})`);
 
-if (appSource.includes("from '@carbon/react'") && appSource.includes("from '@carbon/charts-react'")) pass('Carbon React and Carbon Charts are the runtime UI vocabulary');
-else fail('Carbon runtime imports are incomplete');
+const missingRequired = (manifest.requiredDependencies ?? []).filter((name) => !dependencyNames.includes(name));
+if (missingRequired.length > 0) fail(`Missing dependencies required by the active adapter: ${missingRequired.join(', ')}`);
+else pass('Active adapter\'s required dependencies are installed');
 
-const rawControls = /<(button|input|select|textarea)\b/.exec(appSource);
-if (rawControls) fail(`Custom control duplicates Carbon: <${rawControls[1]}>`);
-else pass('No custom HTML controls duplicate Carbon components');
+// 2. Evidence the active adapter is actually wired into the app, not just installed.
+const importPrefix = manifest.componentImportPrefix ?? '';
+const usesAdapterComponents = importPrefix && appSourceFiles.some((file) => readFileSync(file, 'utf8').includes(importPrefix));
+if (usesAdapterComponents) pass(`App code imports components from the active adapter (${importPrefix})`);
+else fail(`No app file imports from the active adapter's component prefix (${importPrefix})`);
 
-if (/#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})\b/i.test(stylesSource)) fail('Arbitrary hex colors found in application CSS');
-else pass('No arbitrary hex colors found');
+// 3. No raw HTML controls duplicating adapter primitives, outside the adapter's own source dir.
+// JSX intrinsic elements are always lowercase (that's how React tells them apart from components),
+// so this intentionally does not match the adapter's own capitalized <Button>/<Input>/<Select>/<Textarea>.
+const rawControlPattern = /<(button|input|select|textarea)\b/;
+const rawControlFile = appSourceFiles.find((file) => rawControlPattern.test(readFileSync(file, 'utf8')));
+if (rawControlFile) fail(`Custom control duplicates an active-adapter component in ${rawControlFile}`);
+else pass('No custom HTML controls duplicate active-adapter components');
 
-if (/(?:margin|padding|gap|width|height)\s*:\s*\d+px/.test(stylesSource)) fail('Arbitrary pixel layout values found in application CSS');
-else pass('Application layout uses Carbon tokens rather than arbitrary pixel spacing');
+// 4. No arbitrary hex colors or bracket-value Tailwind classes on foundational surfaces.
+const hexPattern = /#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})\b/i;
+if (hexPattern.test(globalsCssSource)) fail('Arbitrary hex colors found in globals.css');
+else pass('No arbitrary hex colors found in globals.css');
 
+const arbitraryBracketPattern = /\b(?:bg|text|border)-\[#[0-9a-f]{3,8}\]/i;
+const arbitraryColorFile = appSourceFiles.find((file) => arbitraryBracketPattern.test(readFileSync(file, 'utf8')));
+if (arbitraryColorFile) fail(`Arbitrary bracket-value color class found in ${arbitraryColorFile}`);
+else pass('No arbitrary bracket-value color classes found in app code');
+
+// 5. Pattern/state/accessibility checks against the Playground reference implementation.
 requireSource('Record-management composition', [
-  'Search',
-  'Select',
-  'DataTable',
-  'Tag',
-  'OverflowMenu',
-  'Modal',
-  'InlineNotification',
+  "from '@/components/ui/input'",
+  "from '@/components/ui/select'",
+  "from '@/components/ui/table'",
+  "from '@/components/ui/badge'",
+  "from '@/components/ui/dropdown-menu'",
+  "from '@/components/ui/dialog'",
+  "from '@/components/ui/alert-dialog'",
 ]);
 
-requireSource('Destructive-action confirmation', ['danger', 'Revoke access', 'onRequestSubmit={handleRevoke}']);
+requireSource('Destructive-action confirmation', ['AlertDialog', 'Revoke access', 'onClick={handleRevoke}']);
 requireSource('Search and role filter target the member dataset', ['visibleMembers', 'searchQuery', 'roleFilter', 'members.filter']);
-requireSource('Required data states', ['loadState === \'loading\'', 'loadState === \'error\'', 'members.length === 0', 'visibleMembers.length === 0']);
-requireSource('Accessible control naming', ['labelText="Search members"', 'labelText="Role"', 'aria-label={`Actions for ${member.name}`}']);
-requireStyles('Record-management surfaces share an aligned content frame', ['.team-controls', '.team-table-frame', 'max-width: 84rem', 'width: 100%', 'table-layout: fixed']);
+requireSource('Required data states', ["loadState === 'loading'", "loadState === 'error'", 'members.length === 0', 'visibleMembers.length === 0']);
+requireSource('Accessible control naming', ['htmlFor="team-member-search"', 'htmlFor="team-role-filter"', 'aria-label={`Actions for ${member.name}`}']);
 
+// 6. Commands declared by the active adapter's manifest.
 const commands = [
-  ['typecheck', 'tsc', ['-b', '--pretty', 'false']],
-  ['lint', 'eslint', ['.']],
-  ['build', 'vite', ['build']],
+  ['typecheck', manifest.typecheckCommand],
+  ['lint', manifest.lintCommand],
+  ['build', manifest.buildCommand],
 ];
 
-for (const [label, binary, args] of commands) {
-  const binaryPath = resolve(root, 'node_modules/.bin', binary);
-  if (!existsSync(binaryPath)) {
-    fail(`${label} command unavailable at ${binaryPath}`);
+for (const [label, command] of commands) {
+  if (!command) {
+    fail(`${label} command not declared in design-system/active-system.json`);
     continue;
   }
+  const [binary, ...args] = command.split(' ');
+  const binaryPath = existsSync(resolve(root, 'node_modules/.bin', binary)) ? resolve(root, 'node_modules/.bin', binary) : binary;
   try {
     execFileSync(binaryPath, args, { cwd: root, stdio: 'ignore' });
     pass(`${label} passes`);

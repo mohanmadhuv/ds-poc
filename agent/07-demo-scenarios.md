@@ -10,7 +10,7 @@ Prompt:
 Expected reasoning shape:
 - Primary pattern: record management
 - Objects: team members
-- High-value components: DataTable, Search, status/role Tag where useful, Button, Dropdown/Select, OverflowMenu, Modal, Notification
+- High-value components: DataTable, Search, status/role Badge where useful, Button, Select, Menu, Dialog, Notification
 - Important states: loading, no members, no search results, invite success/error, permission constraints
 - Destructive action: revoke access -> confirmation
 - Product concern: admin-only actions should be represented coherently
@@ -29,7 +29,7 @@ Expected reasoning shape:
 - Primary pattern: monitoring and triage
 - Secondary patterns: filtering, detail/drill-down, notifications
 - Objects: services, incidents, alerts
-- High-value components: summary Tiles where meaningful, Tag, DataTable, Search, filter controls, Tabs for peer detail sections if justified, detail panel/page, Notification
+- High-value components: summary Cards where meaningful, Badge, DataTable, Search, filter controls, Tabs for peer detail sections if justified, detail panel/page, Notification
 - Important states: freshness/loading, no incidents, filtered no-results, error
 - Product concern: severity must be quickly scannable without relying on color alone
 
@@ -45,7 +45,7 @@ Prompt:
 Expected reasoning shape:
 - Primary pattern: multi-step creation
 - Objects: application/deployment configuration
-- High-value components: ProgressIndicator, TextInput, Select/Dropdown, NumberInput, Toggle/Checkbox as appropriate, Buttons, validation, review summary, Notification
+- High-value components: ProgressIndicator, TextField, Select/ComboBox, NumberField, Switch/Checkbox as appropriate, Buttons, validation, review summary, Notification
 - Important states: validation errors, submitting/loading, deployment success/error
 - Consequence: final launch should be explicit and reviewable
 

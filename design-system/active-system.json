@@ -1,0 +1,31 @@
+{
+  "name": "shadcn",
+  "label": "shadcn/ui",
+  "adapterDoc": "design-system/adapters/shadcn.md",
+  "baseLibrary": "radix-ui",
+  "stylingEngine": "tailwindcss",
+  "componentSourceDir": "src/components/ui",
+  "componentImportPrefix": "@/components/ui/",
+  "requiredDependencies": [
+    "next",
+    "tailwindcss",
+    "radix-ui",
+    "class-variance-authority",
+    "cn",
+    "lucide-react"
+  ],
+  "forbiddenDependencies": [
+    "@carbon/react",
+    "@carbon/charts-react",
+    "@carbon/icons-react",
+    "@mui/material",
+    "@chakra-ui/react",
+    "antd",
+    "styled-components",
+    "bootstrap",
+    "react-bootstrap"
+  ],
+  "buildCommand": "next build --webpack",
+  "typecheckCommand": "tsc --noEmit",
+  "lintCommand": "eslint ."
+}
