@@ -19,8 +19,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
-  { href: '/', label: 'Overview' },
-  { href: '/playground', label: 'Playground' },
+  { href: '/', label: 'Playground' },
   { href: '/components', label: 'Component inventory' },
   { href: '/brand-foundations', label: 'Brand foundations' },
 ];
@@ -82,25 +81,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* The single toggle lives inside the content card itself —
               pinned to the corner of the actual page viewport, not the
               outer browser window — so it moves and scales with the card
-              instead of floating fixed above everything. Clipped to a
-              corner-ribbon triangle rather than a plain square icon button. */}
+              instead of floating fixed above everything. clip-path is on
+              the button itself (not a decorative overlay), so the hit area
+              is the triangle only — no invisible square catching clicks in
+              the transparent corner. The icon is offset to the triangle's
+              centroid (2s/3, s/3 for a right triangle in an s×s box), not
+              the square's center, so it sits optically inside the shape. */}
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-0 right-0 z-10 size-12 rounded-none hover:bg-transparent hover:opacity-90"
+            className="bg-foreground text-background hover:bg-foreground absolute top-0 right-0 z-10 size-12 rounded-none hover:opacity-90"
+            style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
             aria-label={expanded ? 'Collapse view' : 'Expand view'}
             onClick={toggle}
           >
-            <span
-              aria-hidden
-              className="bg-foreground pointer-events-none absolute inset-0"
-              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
-            />
-            <ArrowUpRight className="text-background relative size-4 translate-x-1.5 -translate-y-1.5" />
+            <ArrowUpRight className="size-4 translate-x-2 -translate-y-2" />
           </Button>
           <main
             id="main-content"
-            className={cn('flex flex-1 flex-col', pathname === '/playground' ? 'overflow-hidden' : 'px-8 py-8')}
+            className={cn('flex flex-1 flex-col', pathname === '/' ? 'overflow-hidden' : 'px-8 py-8')}
           >
             {children}
           </main>

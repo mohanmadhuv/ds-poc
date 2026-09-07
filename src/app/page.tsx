@@ -1,5 +1,5 @@
-import { Overview } from '@/components/overview';
+import { CargoplotInbox } from '@/components/cargoplot-inbox';
 
 export default function Page() {
-  return <Overview />;
+  return <CargoplotInbox />;
 }
