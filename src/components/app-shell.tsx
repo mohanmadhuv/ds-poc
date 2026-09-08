@@ -27,7 +27,7 @@ const navItems = [
 // Playground product screens render their own full-bleed shell (product nav,
 // header, etc.) and manage their own scrolling, so they opt out of this
 // tool's default content padding.
-const fullBleedPaths = ['/', '/messages', '/inquiries'];
+const fullBleedPaths = ['/', '/messages', '/inquiries', '/shipments'];
 
 // Matches the easing Squarespace's own editor uses when swapping its canvas
 // between editing chrome and a clean live preview.

@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import { Sora } from 'next/font/google';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Bot,
@@ -9,6 +11,7 @@ import {
   Columns3,
   FileText,
   Filter,
+  Handshake,
   Info,
   MapPin,
   Package,
@@ -19,10 +22,12 @@ import {
   Route,
   Search as SearchIcon,
   Ship,
+  Star,
   TrainFront,
   TriangleAlert,
   Truck,
   UploadCloud,
+  Users,
   X,
 } from 'lucide-react';
 
@@ -79,12 +84,465 @@ const statusStyles: Record<Inquiry['status'], string> = {
   Booked: 'text-white',
 };
 
+const freightLabel: Record<TransportMode, string> = {
+  sea: 'Seafreight',
+  air: 'Airfreight',
+  rail: 'Rail freight',
+  road: 'Road freight',
+};
+
 function formatLocation(loc: Location | null) {
   return loc ? `${loc.city}, ${loc.country}` : null;
 }
 
+// A search result from the carrier network. Generated deterministically from
+// the inquiry's reference (rather than truly at random) so a given inquiry
+// always shows the same quotes — mirrors the real product's "quotes already
+// generated for this inquiry" behavior instead of reshuffling on every render.
+type Quote = {
+  id: string;
+  price: number;
+  transitDays: number;
+  rating: number | null;
+  reviewCount: number;
+  proneToDelays: boolean;
+};
+
+function seededRandom(seed: string) {
+  let state = 0;
+  for (let i = 0; i < seed.length; i++) state = (Math.imul(state, 31) + seed.charCodeAt(i)) | 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) | 0;
+    return ((state >>> 0) % 100000) / 100000;
+  };
+}
+
+function generateQuotes(inquiry: Inquiry): Quote[] {
+  const rand = seededRandom(inquiry.reference);
+  const basePrice = 900 + Math.floor(rand() * 300);
+  const count = 6 + Math.floor(rand() * 5);
+  return Array.from({ length: count }, (_, i) => {
+    const hasRating = rand() > 0.15;
+    return {
+      id: `${inquiry.id}-${i}`,
+      price: basePrice + i * (8 + Math.floor(rand() * 20)),
+      transitDays: 14 + Math.floor(rand() * 24),
+      rating: hasRating ? Math.round((3.4 + rand() * 1.6) * 10) / 10 : null,
+      reviewCount: hasRating ? 90 + Math.floor(rand() * 420) : 0,
+      proneToDelays: rand() > 0.82,
+    };
+  });
+}
+
+function locationCode(loc: Location) {
+  return loc.city.replace(/[^a-zA-Z]/g, '').slice(0, 5).toUpperCase();
+}
+
+function addDays(dateStr: string, days: number) {
+  const date = new Date(dateStr);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatLongDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+const countryCodes: Record<string, string> = {
+  'The Netherlands': 'NL',
+  Canada: 'CA',
+  'United States': 'US',
+  Germany: 'DE',
+  'United Kingdom': 'GB',
+  China: 'CN',
+  'United Arab Emirates': 'AE',
+  India: 'IN',
+  Morocco: 'MA',
+  Singapore: 'SG',
+  Australia: 'AU',
+};
+
+// UN/LOCODE-style discharge port code, e.g. Rotterdam, The Netherlands -> NLRTM.
+function portCode(loc: Location) {
+  const country = countryCodes[loc.country] ?? loc.country.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase();
+  return country + loc.city.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase();
+}
+
+// A vendor-billed charge line on an accepted quote's invoice. Weights are
+// fixed proportions of the quote's total price so every quote's line items
+// always foot to its own price exactly, rather than to an unrelated total.
+type LineItem = {
+  vendor: string;
+  vendorColor: string;
+  description: string;
+  unitPrice: number;
+  quantityLabel: string;
+  subtotal: number;
+};
+
+function buildLineItems(quote: Quote, inquiry: Inquiry): LineItem[] {
+  const rand = seededRandom(`${inquiry.reference}-lineitems`);
+  const totalContainers = inquiry.cargo.reduce((sum, line) => sum + line.quantity, 0);
+  const fuelPct = 20 + Math.floor(rand() * 30);
+  const distanceKm = 15 + Math.floor(rand() * 60);
+  const destLabel = destinationTransportOptions.find((o) => o.value === inquiry.destinationTransport)?.label ?? 'Road';
+
+  const weighted: (Omit<LineItem, 'subtotal' | 'unitPrice'> & { weight: number })[] = [
+    {
+      vendor: 'CA',
+      vendorColor: '#0f3d3e',
+      description: `${freightLabel[inquiry.mainTransport]} freight, ${inquiry.origin.city} to ${portCode(inquiry.destination)}`,
+      quantityLabel: '1',
+      weight: 0.5,
+    },
+    {
+      vendor: 'TH',
+      vendorColor: '#0e7490',
+      description: `Terminal handling & release charges, ${inquiry.destination.city}`,
+      quantityLabel: '1',
+      weight: 0.16,
+    },
+    {
+      vendor: 'CU',
+      vendorColor: '#0e7490',
+      description: 'Customs import clearance, including 1 HS code',
+      quantityLabel: '1',
+      weight: 0.04,
+    },
+    {
+      vendor: 'DT',
+      vendorColor: '#b91c1c',
+      description: `${destLabel} to ${inquiry.destination.city} (${distanceKm} km)`,
+      quantityLabel: `${totalContainers} container${totalContainers === 1 ? '' : 's'}`,
+      weight: 0.14,
+    },
+    {
+      vendor: 'DT',
+      vendorColor: '#b91c1c',
+      description: `Fuel surcharge (variable; currently ${fuelPct}%; surcharges are subject to change and are passed through at cost.)`,
+      quantityLabel: '1',
+      weight: 0.06,
+    },
+    {
+      vendor: 'CU',
+      vendorColor: '#0e7490',
+      description: 'Documentation fee',
+      quantityLabel: '1',
+      weight: 0.03,
+    },
+    {
+      vendor: 'CARGOPLOT',
+      vendorColor: BRAND_MINT,
+      description: 'Cargoplot',
+      quantityLabel: '1',
+      weight: 0.07,
+    },
+  ];
+
+  let allocated = 0;
+  return weighted.map((item, i) => {
+    const isLast = i === weighted.length - 1;
+    const subtotal = isLast ? quote.price - allocated : Math.round(quote.price * item.weight * 100) / 100;
+    allocated += subtotal;
+    return { ...item, unitPrice: subtotal, subtotal };
+  });
+}
+
+// The route/date/incoterm/mode recap shown above the quote results,
+// regardless of whether the search found anything.
+function ResultsSummaryBar({ inquiry }: { inquiry: Inquiry }) {
+  const ModeIcon = modeIcon[inquiry.mainTransport];
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border p-3 text-sm">
+      <span className="flex items-center gap-1.5">
+        <Route className="text-muted-foreground size-4" />
+        <span className="font-medium">{inquiry.origin.city}</span>
+        <span className="text-muted-foreground">to</span>
+        <span className="font-medium">{inquiry.destination.city}</span>
+      </span>
+      <span className="text-muted-foreground">·</span>
+      <span>{inquiry.readyDate}</span>
+      <span className="text-muted-foreground">·</span>
+      <span>{inquiry.incoterm}</span>
+      <span className="text-muted-foreground">·</span>
+      <span className="flex items-center gap-1">
+        <ModeIcon className="size-4" />
+        <Truck className="size-4" />
+      </span>
+    </div>
+  );
+}
+
+// One row of the search results list: mirrors the carrier-quote card from
+// CargoPlot's production Inquiries screen (mode + incoterm, agent rating,
+// price, and a compact route/last-mile timeline) rather than the flat
+// "no quotes yet" placeholder this mock previously showed.
+function QuoteCard({
+  quote,
+  inquiry,
+  onBook,
+  onView,
+  accepted = false,
+  originLabel,
+}: {
+  quote: Quote;
+  inquiry: Inquiry;
+  onBook?: () => void;
+  onView?: () => void;
+  // Accepted mode renders the read-only summary for a Quoted/Booked inquiry:
+  // a "worked together before" tag, a status pill in place of "Prone to
+  // delays", and no Book now / View quote actions — the full quote detail
+  // sits right below it on the page instead of behind a click-through.
+  accepted?: boolean;
+  originLabel?: string;
+}) {
+  const ModeIcon = modeIcon[inquiry.mainTransport];
+  const LastLegIcon = destinationTransportOptions.find((o) => o.value === inquiry.destinationTransport)?.icon ?? Truck;
+  const incotermCode = inquiry.incoterm.split(' - ')[0];
+  const validTill = addDays(inquiry.readyDate, 115);
+
+  return (
+    <div className={cn(sharp, 'border p-4')}>
+      {accepted && (
+        <div className="mb-3 flex justify-end">
+          <Badge className={cn(sharp, 'gap-1 bg-emerald-50 text-emerald-700')}>
+            <Handshake className="size-3.5" /> Worked together before
+          </Badge>
+        </div>
+      )}
+      <div className="flex items-start gap-4">
+        <div className="flex flex-1 items-start gap-3">
+          <ModeIcon className="mt-0.5 size-6 shrink-0" style={{ color: BRAND_DARK }} />
+          <div>
+            <p className="font-semibold">{freightLabel[inquiry.mainTransport]}</p>
+            <p className="text-muted-foreground text-xs">{incotermCode}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Users className="text-muted-foreground size-4" />
+          <div>
+            <p className="text-sm">Multiple agents</p>
+            {quote.rating ? (
+              <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                <div className="flex text-amber-500">
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <Star key={i} className={cn('size-3', i < Math.round(quote.rating!) ? 'fill-current' : 'fill-none')} />
+                  ))}
+                </div>
+                ({quote.reviewCount})
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-xs">No rating available</p>
+            )}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className={cn(sora.className, 'text-lg font-bold')}>€{quote.price.toLocaleString()}</p>
+          {accepted ? (
+            <Badge
+              className={cn(
+                sharp,
+                'mt-1',
+                inquiry.status === 'Booked' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700',
+              )}
+            >
+              {inquiry.status === 'Booked' ? 'Accepted' : 'Quoted'}
+            </Badge>
+          ) : (
+            <>
+              <p className="text-muted-foreground text-xs">Valid till {validTill}</p>
+              {quote.proneToDelays && (
+                <Badge className={cn(sharp, 'mt-1 bg-orange-100 text-orange-700')}>
+                  <TriangleAlert className="size-3" /> Prone to delays
+                </Badge>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-end gap-4">
+        <div className="flex-1">
+          <div className="flex items-center">
+            <span className="border-muted-foreground/40 size-2 shrink-0 rounded-full border" />
+            <span className="border-muted-foreground/30 mx-1 h-px flex-1 border-t border-dashed" />
+            <span className="border-muted-foreground/40 size-2 shrink-0 rounded-full border" />
+            <span className="border-muted-foreground/30 mx-1 h-px flex-1 border-t border-dashed" />
+            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: BRAND_DARK }} />
+            <span className="mx-1.5 h-px flex-1" style={{ backgroundColor: BRAND_DARK }} />
+            <LastLegIcon className="size-4 shrink-0" style={{ color: BRAND_DARK }} />
+            <span className="mx-1.5 h-px flex-1" style={{ backgroundColor: BRAND_DARK }} />
+            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: BRAND_DARK }} />
+          </div>
+          <div className="text-muted-foreground mt-1 flex justify-between text-[10px] font-medium">
+            <span>{originLabel ?? locationCode(inquiry.origin)}</span>
+            <span>{inquiry.destination.city}</span>
+          </div>
+        </div>
+        {!accepted && (
+          <div className="flex w-32 shrink-0 flex-col gap-1.5">
+            <Button size="sm" className={sharp} style={{ backgroundColor: BRAND_MINT, color: BRAND_DARK }} onClick={onBook}>
+              Book now
+            </Button>
+            <Button size="sm" variant="outline" className={sharp} onClick={onView}>
+              View quote
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function newReference() {
   return `C${Math.floor(100 + Math.random() * 900)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+}
+
+function DetailField({ label, children, info }: { label: string; children: ReactNode; info?: string }) {
+  return (
+    <div>
+      <p className="text-muted-foreground flex items-center gap-1 text-xs">
+        {label}
+        {info && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="size-3" />
+            </TooltipTrigger>
+            <TooltipContent>{info}</TooltipContent>
+          </Tooltip>
+        )}
+      </p>
+      <div className="font-medium">{children}</div>
+    </div>
+  );
+}
+
+function VendorBadge({ vendor, color }: { vendor: string; color: string }) {
+  if (vendor === 'CARGOPLOT') {
+    return (
+      <span className={cn(sharp, 'flex size-6 shrink-0 items-center justify-center')} style={{ backgroundColor: color }}>
+        <Image src="/cargoplot-mark.png" alt="" width={40} height={40} className="size-4" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className="flex size-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold text-white"
+      style={{ backgroundColor: color }}
+    >
+      {vendor}
+    </span>
+  );
+}
+
+// The finalized quote document for a Quoted/Booked inquiry: a read-only
+// summary card (no Book now / View quote — there's nothing left to do here)
+// followed by the full itemized quote, mirroring the real product's PDF-style
+// quote breakdown instead of the search-in-progress quotes list.
+function AcceptedQuoteDocument({ inquiry, bookedQuote }: { inquiry: Inquiry; bookedQuote?: Quote }) {
+  const quote = useMemo(() => bookedQuote ?? generateQuotes(inquiry)[0], [inquiry, bookedQuote]);
+  const lineItems = useMemo(() => buildLineItems(quote, inquiry), [quote, inquiry]);
+  const grandTotal = lineItems.reduce((sum, item) => sum + item.subtotal, 0);
+  const validTo = addDays(inquiry.readyDate, 115);
+  const validFrom = addDays(validTo, -364);
+  const totalContainers = inquiry.cargo.reduce((sum, line) => sum + line.quantity, 0);
+  const ModeIcon = modeIcon[inquiry.mainTransport];
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+      <QuoteCard quote={quote} inquiry={inquiry} accepted originLabel={portCode(inquiry.destination)} />
+
+      <div className="mt-6">
+        <h2 className={cn(sora.className, 'text-lg font-bold')}>Quote {inquiry.reference}-P1</h2>
+
+        <h3 className={cn(sora.className, 'mt-6 font-bold')}>Shipment details</h3>
+        <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-4">
+          <DetailField label="Date">{formatLongDate(inquiry.readyDate)}</DetailField>
+          <DetailField label="Transport mode">
+            <Badge variant="secondary" className={cn(sharp, 'gap-1')}>
+              <ModeIcon className="size-3.5" /> {freightLabel[inquiry.mainTransport]}
+            </Badge>
+          </DetailField>
+          <DetailField label="Valid from B/L onboard date">{formatLongDate(validFrom)}</DetailField>
+          <DetailField label="Valid to B/L onboard date" info="The quoted rate no longer applies after this date.">
+            {formatLongDate(validTo)}
+          </DetailField>
+          <DetailField label="Origin">{formatLocation(inquiry.origin)}</DetailField>
+          <DetailField label="Destination">{formatLocation(inquiry.destination)}</DetailField>
+          <DetailField label="Port of loading">
+            <span className="text-muted-foreground font-normal">Not available</span>
+          </DetailField>
+          <DetailField label="Port of discharge">{portCode(inquiry.destination)}</DetailField>
+        </div>
+
+        <h3 className={cn(sora.className, 'mt-8 font-bold')}>Cargo specifications</h3>
+        <div className="mt-3 border">
+          <div className="bg-muted/30 flex items-center gap-2 border-b px-3 py-2.5 text-sm">
+            <Package className="size-4" /> {totalContainers} container{totalContainers === 1 ? '' : 's'}
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Container type</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {inquiry.cargo.map((line, i) => (
+                <TableRow key={i}>
+                  <TableCell>{line.quantity}</TableCell>
+                  <TableCell>{line.containerType}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <h3 className={cn(sora.className, 'mt-8 font-bold')}>Line items</h3>
+        <Table className="mt-3">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Description</TableHead>
+              <TableHead className="text-right">Unit price</TableHead>
+              <TableHead>Quantity</TableHead>
+              <TableHead className="text-right">Subtotal</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {lineItems.map((item, i) => (
+              <TableRow key={i}>
+                <TableCell className="flex items-center gap-2">
+                  <VendorBadge vendor={item.vendor} color={item.vendorColor} />
+                  {item.description}
+                </TableCell>
+                <TableCell className="text-right">€{item.unitPrice.toFixed(2)}</TableCell>
+                <TableCell>{item.quantityLabel}</TableCell>
+                <TableCell className="text-right">€{item.subtotal.toFixed(2)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <div className="mt-2 flex justify-end gap-8 border-t pt-2 text-sm">
+          <span className="text-muted-foreground">Total of EUR items</span>
+          <span className="w-24 text-right">€{grandTotal.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-end gap-8 border-t pt-2 font-semibold">
+          <span>Grand total</span>
+          <span className="w-24 text-right">€{grandTotal.toFixed(2)}</span>
+        </div>
+
+        <ul className="text-muted-foreground mt-6 list-disc space-y-1 pl-5 text-xs">
+          <li>The general terms and conditions of Cargoplot &amp; the chosen freight forwarder apply</li>
+          <li>Offer valid if the on-board date (according to bill of lading or equivalent document) is within the quote validity period</li>
+          <li>Cargo-related documents are provided in exchange for payment</li>
+          <li>All prices are conditional upon available capacity with the selected carriers</li>
+          <li>Excluding VAT, import duties, timeslot delivery, and loading and unloading equipment</li>
+          <li>Extra HS codes: €7.50 per code</li>
+        </ul>
+      </div>
+    </div>
+  );
 }
 
 // One field of the spec bar: a label/value trigger that opens a popover with
@@ -352,6 +810,17 @@ export function CargoplotInquiries() {
   const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [description, setDescription] = useState('');
 
+  // Results-flow state: which order the generated quotes are sorted in, and
+  // which specific quote was booked per inquiry (so the accepted-quote
+  // document reflects the one actually chosen, not just the cheapest).
+  const [sortOrder, setSortOrder] = useState<'price-asc' | 'price-desc' | 'fastest'>('price-asc');
+  const [acceptedQuotes, setAcceptedQuotes] = useState<Record<string, Quote>>({});
+  // Inquiries whose search turned up nothing — a real (if uncommon) outcome
+  // for a brand-new search, distinct from the seed inquiries which always
+  // have quotes. Never touches generateQuotes itself, so it can't affect the
+  // already-Quoted/Booked accepted-quote flow.
+  const [failedSearchIds, setFailedSearchIds] = useState<Set<string>>(new Set());
+
   const filteredItems = useMemo(
     () =>
       items.filter((inq) =>
@@ -361,6 +830,26 @@ export function CargoplotInquiries() {
       ),
     [items, listQuery],
   );
+
+  const quotes = useMemo(() => {
+    if (!activeInquiry) return [];
+    if (failedSearchIds.has(activeInquiry.id)) return [];
+    const generated = generateQuotes(activeInquiry);
+    if (sortOrder === 'price-asc') return [...generated].sort((a, b) => a.price - b.price);
+    if (sortOrder === 'price-desc') return [...generated].sort((a, b) => b.price - a.price);
+    return [...generated].sort((a, b) => a.transitDays - b.transitDays);
+  }, [activeInquiry, sortOrder, failedSearchIds]);
+
+  function bookQuote(inquiry: Inquiry, quote: Quote) {
+    setItems((current) => current.map((inq) => (inq.id === inquiry.id ? { ...inq, status: 'Booked' } : inq)));
+    setActiveInquiry((current) => (current && current.id === inquiry.id ? { ...current, status: 'Booked' } : current));
+    setAcceptedQuotes((current) => ({ ...current, [inquiry.id]: quote }));
+    toast.success('Quote booked', { description: `${inquiry.reference} · €${quote.price.toLocaleString()}` });
+  }
+
+  function viewQuote(quote: Quote) {
+    toast('Quote details', { description: `€${quote.price.toLocaleString()} · ${quote.transitDays} day transit` });
+  }
 
   function resetDraft() {
     setOrigin(null);
@@ -416,10 +905,15 @@ export function CargoplotInquiries() {
     setActiveInquiry(inquiry);
     setDescriptionOpen(false);
     setView('results');
+    // A real search sometimes turns up nothing — simulate that outcome for
+    // newly submitted inquiries instead of always guaranteeing quotes.
+    if (Math.random() < 0.25) {
+      setFailedSearchIds((current) => new Set(current).add(inquiry.id));
+    }
   }
 
   return (
-    <CargoplotShell crumb="Inquiries">
+    <CargoplotShell backLabel={view !== 'list' ? 'Back to Inquiries' : undefined} onBack={() => setView('list')}>
       {view === 'list' && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between border-b p-4">
@@ -447,17 +941,17 @@ export function CargoplotInquiries() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Ready date</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Specifications</TableHead>
-                  <TableHead>Requested by</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="w-28 truncate">Reference</TableHead>
+                  <TableHead className="w-44 truncate">Route</TableHead>
+                  <TableHead className="truncate">Description</TableHead>
+                  <TableHead className="w-28 truncate">Ready date</TableHead>
+                  <TableHead className="w-16 truncate">Mode</TableHead>
+                  <TableHead className="w-56 truncate">Specifications</TableHead>
+                  <TableHead className="w-32 truncate">Requested by</TableHead>
+                  <TableHead className="w-24 truncate">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -482,28 +976,28 @@ export function CargoplotInquiries() {
                           setView('results');
                         }}
                       >
-                        <TableCell className="font-medium">{inq.reference}</TableCell>
-                        <TableCell>
+                        <TableCell className="truncate font-medium">{inq.reference}</TableCell>
+                        <TableCell className="truncate">
                           <span className="font-medium">{inq.origin.city}</span>{' '}
                           <span className="text-muted-foreground">To</span>{' '}
                           <span className="font-medium">{inq.destination.city}</span>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{inq.description}</TableCell>
-                        <TableCell>{inq.readyDate}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-muted-foreground truncate">{inq.description}</TableCell>
+                        <TableCell className="truncate">{inq.readyDate}</TableCell>
+                        <TableCell className="truncate">
                           <div className="text-muted-foreground flex items-center gap-1.5">
-                            <MainIcon className="size-4" />
-                            <Truck className="size-4" />
+                            <MainIcon className="size-4 shrink-0" />
+                            <Truck className="size-4 shrink-0" />
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="text-muted-foreground flex items-center gap-1.5">
-                            <Package className="size-4" />
-                            {cargoText}
+                        <TableCell className="truncate">
+                          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5">
+                            <Package className="size-4 shrink-0" />
+                            <span className="min-w-0 truncate">{cargoText}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{inq.requestedBy}</TableCell>
-                        <TableCell>
+                        <TableCell className="truncate">{inq.requestedBy}</TableCell>
+                        <TableCell className="truncate">
                           <Badge
                             className={cn(sharp, statusStyles[inq.status])}
                             style={
@@ -528,60 +1022,14 @@ export function CargoplotInquiries() {
       )}
 
       {view === 'create' && (
-        <div className="flex min-h-0 flex-1">
-          {/* Inquiries list rail */}
-          <div className="flex w-64 shrink-0 flex-col border-r p-3">
-            <button
-              type="button"
-              className="text-muted-foreground mb-3 flex items-center gap-1.5 text-sm hover:text-foreground"
-              onClick={() => setView('list')}
-            >
-              <ArrowLeft className="size-4" /> Back to overview
-            </button>
-            <h2 className={cn(sora.className, 'text-lg font-bold')}>Inquiries</h2>
-            <div className="relative mt-3">
-              <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input placeholder="Search" className={cn(sharp, 'pl-8')} />
-            </div>
-            <Button
-              className={cn(sharp, 'mt-3')}
-              style={{ backgroundColor: BRAND_DARK, color: 'white' }}
-              onClick={startCreate}
-            >
-              <Plus className="size-4" /> New inquiry
-            </Button>
-            <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
-              {items.map((inq) => (
-                <button
-                  key={inq.id}
-                  type="button"
-                  className="border-border/70 flex w-full flex-col items-start gap-1 border p-2.5 text-left text-sm hover:bg-muted/40"
-                  onClick={() => {
-                    setActiveInquiry(inq);
-                    setView('results');
-                  }}
-                >
-                  <span className="font-medium">{inq.reference}</span>
-                  <span className="text-muted-foreground text-xs">{inq.description}</span>
-                  <Badge className={cn(sharp, statusStyles[inq.status])}>{inq.status}</Badge>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-            <div className="flex border">
-              <div className="flex-1">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 border">
                 <div className="grid grid-cols-2 divide-x border-b">
-                  <SpecField label="Origin" value={formatLocation(origin)} placeholder="City, country" invalid={!origin}>
+                  <SpecField label="Origin" value={formatLocation(origin)} placeholder="City, country">
                     <LocationEditor kind="origin" onSave={setOrigin} />
                   </SpecField>
-                  <SpecField
-                    label="Destination"
-                    value={formatLocation(destination)}
-                    placeholder="City, country"
-                    invalid={!destination}
-                  >
+                  <SpecField label="Destination" value={formatLocation(destination)} placeholder="City, country">
                     <LocationEditor kind="destination" onSave={setDestination} />
                   </SpecField>
                 </div>
@@ -790,16 +1238,15 @@ export function CargoplotInquiries() {
                   </SpecField>
                 </div>
               </div>
-              <button
+              <Button
                 type="button"
                 disabled={!canSearch}
-                className="flex w-28 shrink-0 flex-col items-center justify-center gap-1 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ backgroundColor: BRAND_DARK }}
+                className={cn(sharp, 'shrink-0')}
+                style={{ backgroundColor: BRAND_DARK, color: 'white' }}
                 onClick={() => setDescriptionOpen(true)}
               >
-                <SearchIcon className="size-4" />
-                Search
-              </button>
+                <SearchIcon className="size-4" /> Search
+              </Button>
             </div>
 
             <div className="mt-4 border p-6" style={{ backgroundColor: BRAND_PALE }}>
@@ -833,53 +1280,30 @@ export function CargoplotInquiries() {
               </div>
             </div>
           </div>
+      )}
+
+      {view === 'results' && activeInquiry && activeInquiry.status !== 'Received' && (
+        <AcceptedQuoteDocument inquiry={activeInquiry} bookedQuote={acceptedQuotes[activeInquiry.id]} />
+      )}
+
+      {view === 'results' && activeInquiry && activeInquiry.status === 'Received' && quotes.length === 0 && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ResultsSummaryBar inquiry={activeInquiry} />
+          <div className="text-muted-foreground m-auto flex max-w-xs flex-col items-center gap-2 text-center">
+            <PackageSearch className="size-8" />
+            <p className={cn(sora.className, 'text-foreground font-bold')}>No results found</p>
+            <p className="text-sm">We couldn&apos;t find any quotes for this search. Try adjusting your inquiry and search again.</p>
+          </div>
         </div>
       )}
 
-      {view === 'results' && activeInquiry && (
+      {view === 'results' && activeInquiry && activeInquiry.status === 'Received' && quotes.length > 0 && (
         <div className="flex min-h-0 flex-1">
-          {/* Inquiries list rail */}
-          <div className="flex w-64 shrink-0 flex-col border-r p-3">
-            <button
-              type="button"
-              className="text-muted-foreground mb-3 flex items-center gap-1.5 text-sm hover:text-foreground"
-              onClick={() => setView('list')}
-            >
-              <ArrowLeft className="size-4" /> Back to overview
-            </button>
-            <h2 className={cn(sora.className, 'text-lg font-bold')}>Inquiries</h2>
-            <div className="relative mt-3">
-              <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              <Input placeholder="Search" className={cn(sharp, 'pl-8')} />
-            </div>
-            <Button className={cn(sharp, 'mt-3')} style={{ backgroundColor: BRAND_DARK, color: 'white' }} onClick={startCreate}>
-              <Plus className="size-4" /> New inquiry
-            </Button>
-            <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
-              {items.map((inq) => (
-                <button
-                  key={inq.id}
-                  type="button"
-                  className={cn(
-                    'flex w-full flex-col items-start gap-1 border p-2.5 text-left text-sm hover:bg-muted/40',
-                    inq.id === activeInquiry.id ? 'border-l-4' : 'border-border/70',
-                  )}
-                  style={inq.id === activeInquiry.id ? { borderLeftColor: BRAND_MINT } : undefined}
-                  onClick={() => setActiveInquiry(inq)}
-                >
-                  <span className="font-medium">{inq.reference}</span>
-                  <span className="text-muted-foreground text-xs">{inq.description}</span>
-                  <Badge className={cn(sharp, statusStyles[inq.status])}>{inq.status}</Badge>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Filters rail */}
           <div className="w-72 shrink-0 space-y-4 overflow-y-auto border-r p-4">
             <div className="grid gap-1">
               <Label className="text-xs">Sorting</Label>
-              <Select defaultValue="price-asc">
+              <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
                 <SelectTrigger className={cn(sharp, 'w-full')}>
                   <SelectValue />
                 </SelectTrigger>
@@ -1037,33 +1461,17 @@ export function CargoplotInquiries() {
 
           {/* Quotes */}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border p-3 text-sm">
-              <span className="flex items-center gap-1.5">
-                <Route className="text-muted-foreground size-4" />
-                <span className="font-medium">{activeInquiry.origin.city}</span>
-                <span className="text-muted-foreground">to</span>
-                <span className="font-medium">{activeInquiry.destination.city}</span>
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span>{activeInquiry.readyDate}</span>
-              <span className="text-muted-foreground">·</span>
-              <span>{activeInquiry.incoterm}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="flex items-center gap-1">
-                {(() => {
-                  const MainIcon = modeIcon[activeInquiry.mainTransport];
-                  return <MainIcon className="size-4" />;
-                })()}
-                <Truck className="size-4" />
-              </span>
-            </div>
-            <div className="text-muted-foreground m-auto flex max-w-xs flex-col items-center gap-2 text-center">
-              <PackageSearch className="size-8" />
-              <p className={cn(sora.className, 'text-foreground font-bold')}>No generated quotes</p>
-              <p className="text-sm">
-                We&apos;re gathering quotes from our carrier network for {activeInquiry.reference}. This can take a few
-                minutes.
-              </p>
+            <ResultsSummaryBar inquiry={activeInquiry} />
+            <div className="mt-4 space-y-3">
+              {quotes.map((quote) => (
+                <QuoteCard
+                  key={quote.id}
+                  quote={quote}
+                  inquiry={activeInquiry}
+                  onBook={() => bookQuote(activeInquiry, quote)}
+                  onView={() => viewQuote(quote)}
+                />
+              ))}
             </div>
           </div>
         </div>

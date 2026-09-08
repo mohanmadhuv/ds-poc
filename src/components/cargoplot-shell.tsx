@@ -4,8 +4,9 @@ import { useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Sora, Instrument_Sans } from 'next/font/google';
+import { Instrument_Sans } from 'next/font/google';
 import {
+  ArrowLeft,
   Banknote,
   Bell,
   Box,
@@ -22,7 +23,6 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 // and a 0px border radius throughout — sharp corners, no rounding. That
 // shape language is scoped to this mock product only, via `sharp` below; it
 // does not apply to this tool's own chrome.
-const sora = Sora({ subsets: ['latin'], weight: ['600', '700'] });
 const instrumentSans = Instrument_Sans({ subsets: ['latin'], weight: ['400', '500', '600'] });
 
 export const BRAND_DARK = '#002d28';
@@ -42,10 +41,18 @@ export const BRAND_PALE = '#ebf0fa';
 
 export const sharp = 'rounded-none';
 
+// Cap on every page's content column, applied once here so it's automatic
+// for every nav item — present and future — rather than something each page
+// has to remember to opt into. Keeps content from stretching edge-to-edge on
+// wide monitors, per the shadcn sidebar-10 reference pattern: the shell's own
+// header stays full-bleed, everything rendered as `children` gets centered
+// and capped.
+const contentMaxW = 'max-w-[1200px]';
+
 const navItems = [
   { icon: Grip, label: 'Dashboard', href: '/' },
   { icon: SearchIcon, label: 'Inquiries', href: '/inquiries' },
-  { icon: Box, label: 'Shipments', href: undefined },
+  { icon: Box, label: 'Shipments', href: '/shipments' },
   { icon: Store, label: 'Deliveries', href: undefined },
   { icon: MessagesSquare, label: 'Messages', href: '/messages' },
   { icon: Banknote, label: 'Invoices', href: undefined },
@@ -54,13 +61,14 @@ const navItems = [
 ] as const;
 
 interface CargoplotShellProps {
-  crumb: string;
   hasNotification?: boolean;
   notifications?: ReactNode;
+  backLabel?: string;
+  onBack?: () => void;
   children: ReactNode;
 }
 
-export function CargoplotShell({ crumb, hasNotification, notifications, children }: CargoplotShellProps) {
+export function CargoplotShell({ hasNotification, notifications, backLabel, onBack, children }: CargoplotShellProps) {
   const [navCollapsed, setNavCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -73,30 +81,49 @@ export function CargoplotShell({ crumb, hasNotification, notifications, children
       <aside
         className={cn(
           'relative flex shrink-0 flex-col text-white transition-[width] duration-200 ease-in-out',
-          navCollapsed ? 'w-14' : 'w-56',
+          navCollapsed ? 'w-14' : 'w-64',
         )}
         style={{ backgroundColor: BRAND_DARK }}
       >
-        <div className={cn('flex items-center px-4 py-5', navCollapsed && 'justify-center px-0')}>
+        {/* Toggle lives inline in the header row, horizontally aligned with
+            the logo (chatgpt.com's pattern): expanded shows logo + a
+            dedicated collapse button side by side; collapsed shrinks that
+            row to a single slot where the logomark swaps to the expand icon
+            on hover. */}
+        <div className={cn('flex items-center px-4 py-5', navCollapsed ? 'justify-center px-0' : 'justify-between')}>
           {navCollapsed ? (
-            <Image src="/cargoplot-mark.png" alt="CargoPlot" width={200} height={200} className="size-7 rounded-sm" priority />
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(sharp, 'group relative size-9 text-white/70 hover:bg-white/10 hover:text-white')}
+              aria-label="Expand sidebar"
+              onClick={() => setNavCollapsed(false)}
+            >
+              <Image
+                src="/cargoplot-mark.png"
+                alt="CargoPlot"
+                width={200}
+                height={200}
+                className="size-7 rounded-sm transition-opacity group-hover:opacity-0"
+                priority
+              />
+              <PanelLeftOpen className="absolute size-4 opacity-0 transition-opacity group-hover:opacity-100" />
+            </Button>
           ) : (
-            <Image src="/cargoplot-logo.png" alt="CargoPlot" width={944} height={206} className="h-6 w-auto" priority />
+            <>
+              <Image src="/cargoplot-logo.png" alt="CargoPlot" width={944} height={206} className="h-6 w-auto" priority />
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(sharp, 'size-7 text-white/70 hover:bg-white/10 hover:text-white')}
+                aria-label="Collapse sidebar"
+                onClick={() => setNavCollapsed(true)}
+              >
+                <PanelLeftClose className="size-4" />
+              </Button>
+            </>
           )}
         </div>
-        {/* Collapse handle sits on the sidebar's own edge, straddling the
-            boundary with the content pane, rather than living inline in the
-            header row — the conventional placement for this control. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-5 -right-3.5 z-20 size-7 rounded-full border border-white/10 text-white/70 shadow-sm hover:bg-white/10 hover:text-white"
-          style={{ backgroundColor: BRAND_DARK }}
-          aria-label={navCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          onClick={() => setNavCollapsed((value) => !value)}
-        >
-          {navCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-        </Button>
         <nav className="flex flex-1 flex-col gap-0.5 px-2">
           {navItems.map((item) => {
             const active = item.href ? pathname === item.href : false;
@@ -138,6 +165,27 @@ export function CargoplotShell({ crumb, hasNotification, notifications, children
                 <p className="truncate text-sm font-medium">Alex Lindgren</p>
                 <p className="truncate text-xs text-white/60">Operations Lead</p>
               </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(sharp, 'relative size-7 text-white/60 hover:bg-white/10 hover:text-white')}
+                    aria-label="Notifications"
+                  >
+                    <Bell className="size-3.5" />
+                    {hasNotification && (
+                      <span
+                        className="absolute top-1 right-1 size-1.5 rounded-full"
+                        style={{ backgroundColor: BRAND_MINT }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className={cn(sharp, 'w-72')}>
+                  {notifications ?? <p className="text-muted-foreground text-sm">You&apos;re all caught up.</p>}
+                </PopoverContent>
+              </Popover>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="size-7 text-white/60 hover:bg-white/10 hover:text-white">
@@ -156,43 +204,25 @@ export function CargoplotShell({ crumb, hasNotification, notifications, children
       </aside>
 
       <div className="light bg-background text-foreground flex min-h-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-4 border-b px-6">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="#" className={cn(sora.className, 'font-semibold')}>
-                  CargoPlot
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage className={cn(sora.className, 'font-semibold')}>{crumb}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <div className="relative ml-auto w-72">
+        <header className="relative flex h-16 shrink-0 items-center border-b px-6">
+          {backLabel && (
+            <button
+              type="button"
+              className="text-muted-foreground absolute left-6 flex items-center gap-1.5 text-sm hover:text-foreground"
+              onClick={onBack}
+            >
+              <ArrowLeft className="size-4" /> {backLabel}
+            </button>
+          )}
+          <div className="relative mx-auto w-full max-w-md">
             <SearchIcon className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
             <Input placeholder="Search cargo, routes..." className={cn(sharp, 'pl-8')} />
           </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className={cn(sharp, 'relative')} aria-label="Notifications">
-                <Bell className="size-4" />
-                {hasNotification && (
-                  <span
-                    className="absolute top-1.5 right-1.5 size-1.5 rounded-full"
-                    style={{ backgroundColor: BRAND_MINT }}
-                  />
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className={cn(sharp, 'w-72')}>
-              {notifications ?? <p className="text-muted-foreground text-sm">You&apos;re all caught up.</p>}
-            </PopoverContent>
-          </Popover>
         </header>
 
-        {children}
+        <div className="flex min-h-0 flex-1 justify-center overflow-hidden">
+          <div className={cn('flex min-h-0 w-full flex-col', contentMaxW)}>{children}</div>
+        </div>
       </div>
     </div>
   );

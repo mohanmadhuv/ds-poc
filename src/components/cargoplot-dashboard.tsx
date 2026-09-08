@@ -46,8 +46,8 @@ export function CargoplotDashboard() {
   const [bannerOpen, setBannerOpen] = useState(true);
 
   return (
-    <CargoplotShell crumb="Dashboard">
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+    <CargoplotShell>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-6">
         {bannerOpen && (
           <div className="flex items-center justify-between border p-3 text-sm" style={{ backgroundColor: '#eaf1fb' }}>
             <p>Stay on top of your shipments — set up your email notification preferences.</p>

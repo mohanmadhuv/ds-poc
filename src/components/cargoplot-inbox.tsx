@@ -163,7 +163,6 @@ export function CargoplotInbox() {
 
   return (
     <CargoplotShell
-      crumb="Inbox"
       hasNotification={unreadCount > 0}
       notifications={
         <>
