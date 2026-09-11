@@ -19,7 +19,6 @@ import {
   Pencil,
   Plane,
   Plus,
-  Route,
   Search as SearchIcon,
   Ship,
   Star,
@@ -56,8 +55,8 @@ import {
   type Inquiry,
   type Location,
   type TransportMode,
-} from '@/fixtures/inquiries';
-import { BRAND_DARK, BRAND_MINT, BRAND_PALE, CargoplotShell, sharp } from '@/components/cargoplot-shell';
+} from '@/fixtures/cargoplot/inquiries';
+import { BRAND_DARK, BRAND_MINT, BRAND_PALE, CargoplotShell, sharp } from '@/components/cargoplot/shell';
 
 const sora = Sora({ subsets: ['latin'], weight: ['600', '700'] });
 
@@ -250,29 +249,6 @@ function buildLineItems(quote: Quote, inquiry: Inquiry): LineItem[] {
 
 // The route/date/incoterm/mode recap shown above the quote results,
 // regardless of whether the search found anything.
-function ResultsSummaryBar({ inquiry }: { inquiry: Inquiry }) {
-  const ModeIcon = modeIcon[inquiry.mainTransport];
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border p-3 text-sm">
-      <span className="flex items-center gap-1.5">
-        <Route className="text-muted-foreground size-4" />
-        <span className="font-medium">{inquiry.origin.city}</span>
-        <span className="text-muted-foreground">to</span>
-        <span className="font-medium">{inquiry.destination.city}</span>
-      </span>
-      <span className="text-muted-foreground">·</span>
-      <span>{inquiry.readyDate}</span>
-      <span className="text-muted-foreground">·</span>
-      <span>{inquiry.incoterm}</span>
-      <span className="text-muted-foreground">·</span>
-      <span className="flex items-center gap-1">
-        <ModeIcon className="size-4" />
-        <Truck className="size-4" />
-      </span>
-    </div>
-  );
-}
-
 // One row of the search results list: mirrors the carrier-quote card from
 // CargoPlot's production Inquiries screen (mode + incoterm, agent rating,
 // price, and a compact route/last-mile timeline) rather than the flat
@@ -870,6 +846,52 @@ export function CargoplotInquiries() {
     setView('create');
   }
 
+  // Loads a Received inquiry's saved values into the same draft state the
+  // create flow uses, so its results view can reuse the create flow's
+  // editable spec grid pre-filled instead of the old read-only summary bar.
+  function loadDraftFromInquiry(inquiry: Inquiry) {
+    setOrigin(inquiry.origin);
+    setDestination(inquiry.destination);
+    const lclLine = inquiry.cargo.length === 1 ? inquiry.cargo[0].containerType.match(/^LCL · (.*) cbm, (.*) kg$/) : null;
+    if (lclLine) {
+      setCargoMode('LCL');
+      setLclVolume(lclLine[1] === '—' ? '' : lclLine[1]);
+      setLclWeight(lclLine[2] === '—' ? '' : lclLine[2]);
+    } else {
+      setCargoMode('FCL');
+      setCargoLines(inquiry.cargo);
+      setLclVolume('');
+      setLclWeight('');
+    }
+    setReadyDate(new Date(`${inquiry.readyDate}T00:00:00`));
+    setIncoterm(incotermOptions.find((o) => o.label === inquiry.incoterm)?.value ?? null);
+    setMainTransport(inquiry.mainTransport);
+    setDestinationTransport(inquiry.destinationTransport);
+  }
+
+  // Applies the draft state back onto the active (Received) inquiry, so
+  // editing origin/destination/cargo/etc. and hitting Search re-runs the
+  // quote generation with the updated details.
+  function applyInquiryEdits() {
+    if (!activeInquiry || !origin || !destination) return;
+    const updated: Inquiry = {
+      ...activeInquiry,
+      origin,
+      destination,
+      readyDate: readyDate ? readyDate.toISOString().slice(0, 10) : activeInquiry.readyDate,
+      incoterm: incotermOptions.find((o) => o.value === incoterm)?.label ?? activeInquiry.incoterm,
+      mainTransport: mainTransport ?? activeInquiry.mainTransport,
+      destinationTransport: destinationTransport ?? activeInquiry.destinationTransport,
+      cargo:
+        cargoMode === 'FCL'
+          ? cargoLines
+          : [{ quantity: 1, containerType: `LCL · ${lclVolume || '—'} cbm, ${lclWeight || '—'} kg` }],
+    };
+    setItems((current) => current.map((inq) => (inq.id === updated.id ? updated : inq)));
+    setActiveInquiry(updated);
+    toast.success('Inquiry updated', { description: updated.reference });
+  }
+
   function cargoSummary() {
     if (cargoMode === 'LCL') {
       if (!lclVolume && !lclWeight) return null;
@@ -910,6 +932,239 @@ export function CargoplotInquiries() {
     if (Math.random() < 0.25) {
       setFailedSearchIds((current) => new Set(current).add(inquiry.id));
     }
+  }
+
+  // The editable spec grid: used both for composing a brand-new inquiry and,
+  // pre-filled via loadDraftFromInquiry, for reconfiguring a Received one
+  // before re-searching — only the Search button's behavior differs.
+  function renderSpecGrid(onSearch: () => void) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex-1 border">
+          <div className="grid grid-cols-2 divide-x border-b">
+            <SpecField label="Origin" value={formatLocation(origin)} placeholder="City, country">
+              <LocationEditor kind="origin" onSave={setOrigin} />
+            </SpecField>
+            <SpecField label="Destination" value={formatLocation(destination)} placeholder="City, country">
+              <LocationEditor kind="destination" onSave={setDestination} />
+            </SpecField>
+          </div>
+          <div className="grid grid-cols-4 divide-x">
+            <SpecField label="Type of cargo" value={cargoSummary()} placeholder="Add cargo">
+              <div>
+                <Tabs value={cargoMode} onValueChange={(v) => setCargoMode(v as typeof cargoMode)}>
+                  <TabsList className={cn(sharp, 'w-full')}>
+                    <TabsTrigger value="FCL" className={sharp}>
+                      FCL
+                    </TabsTrigger>
+                    <TabsTrigger value="LCL" className={sharp}>
+                      LCL
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {cargoMode === 'FCL' ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-muted-foreground text-xs">Please specify the number and types of your containers</p>
+                    {cargoLines.map((line, i) => (
+                      <div key={i} className="flex items-end gap-2">
+                        <div className="grid w-16 gap-1">
+                          <Label className="text-xs">Quantity</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            className={sharp}
+                            value={line.quantity}
+                            onChange={(e) =>
+                              setCargoLines((current) =>
+                                current.map((l, idx) => (idx === i ? { ...l, quantity: Number(e.target.value) || 1 } : l)),
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="grid flex-1 gap-1">
+                          <Label className="text-xs">Container type</Label>
+                          <Select
+                            value={line.containerType}
+                            onValueChange={(v) =>
+                              setCargoLines((current) => current.map((l, idx) => (idx === i ? { ...l, containerType: v } : l)))
+                            }
+                          >
+                            <SelectTrigger className={cn(sharp, 'w-full')}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {containerTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {cargoLines.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(sharp, 'text-muted-foreground shrink-0')}
+                            aria-label="Remove container"
+                            onClick={() => setCargoLines((current) => current.filter((_, idx) => idx !== i))}
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={sharp}
+                      onClick={() => setCargoLines((current) => [...current, { quantity: 1, containerType: containerTypes[0] }])}
+                    >
+                      <Plus className="size-4" /> Add container
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Volume (cbm)</Label>
+                      <Input className={sharp} value={lclVolume} onChange={(e) => setLclVolume(e.target.value)} />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Weight (kg)</Label>
+                      <Input className={sharp} value={lclWeight} onChange={(e) => setLclWeight(e.target.value)} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SpecField>
+
+            <SpecField
+              label="Cargo ready date"
+              value={readyDate ? readyDate.toLocaleDateString() : null}
+              placeholder="Select date"
+            >
+              <Calendar
+                mode="single"
+                selected={readyDate}
+                onSelect={setReadyDate}
+                className="p-0"
+              />
+            </SpecField>
+
+            <SpecField
+              label="Incoterm"
+              value={incotermOptions.find((o) => o.value === incoterm)?.label}
+              placeholder="Select incoterm"
+              info="The Incoterm defines who is responsible for shipping, insurance, and customs at each stage of transport."
+            >
+              <div className="space-y-0.5">
+                {incotermOptions.map((option, i) => (
+                  <div key={option.value}>
+                    {i === 1 && <p className="text-muted-foreground px-2 py-1 text-xs font-semibold">Common options</p>}
+                    <button
+                      type="button"
+                      className={cn(
+                        'flex w-full items-center justify-between px-2 py-1.5 text-left text-sm hover:bg-muted/60',
+                        incoterm === option.value && 'bg-muted',
+                      )}
+                      onClick={() => setIncoterm(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </SpecField>
+
+            <SpecField
+              label="Transport modes"
+              value={
+                mainTransport
+                  ? `${mainTransportOptions.find((o) => o.value === mainTransport)?.label} → ${destinationTransport ?? 'Direct truck'}`
+                  : null
+              }
+              placeholder="Select modes"
+              info="Main transport covers port of loading to discharge. Destination transport covers the final leg."
+              className="border-r-0"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: BRAND_DARK }}
+                  >
+                    1
+                  </span>
+                  <p className="text-sm font-medium">Main transport</p>
+                </div>
+                <p className="text-muted-foreground ml-5.5 text-xs">Port of loading → discharge</p>
+                <div className="mt-2 ml-5.5 flex gap-1.5">
+                  {mainTransportOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={mainTransport === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className={sharp}
+                      style={mainTransport === option.value ? { backgroundColor: BRAND_DARK, color: 'white' } : undefined}
+                      onClick={() => setMainTransport(option.value)}
+                    >
+                      <option.icon className="size-4" /> {option.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex items-center gap-1.5">
+                  <span
+                    className="flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: BRAND_DARK }}
+                  >
+                    2
+                  </span>
+                  <p className="text-sm font-medium">Destination transport</p>
+                </div>
+                <p className="text-muted-foreground ml-5.5 text-xs">Rail and barge include the final truck leg</p>
+                <div className="mt-2 ml-5.5 flex gap-1.5">
+                  {destinationTransportOptions.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={destinationTransport === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className={sharp}
+                      style={
+                        destinationTransport === option.value ? { backgroundColor: BRAND_DARK, color: 'white' } : undefined
+                      }
+                      onClick={() => setDestinationTransport(option.value)}
+                    >
+                      <option.icon className="size-4" /> {option.label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex justify-end gap-2 border-t pt-3">
+                  <Button variant="ghost" size="sm" className={sharp}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" className={sharp} style={{ backgroundColor: BRAND_DARK, color: 'white' }}>
+                    Save
+                  </Button>
+                </div>
+              </div>
+            </SpecField>
+          </div>
+        </div>
+        <Button
+          type="button"
+          disabled={!canSearch}
+          className={cn(sharp, 'shrink-0')}
+          style={{ backgroundColor: BRAND_DARK, color: 'white' }}
+          onClick={onSearch}
+        >
+          <SearchIcon className="size-4" /> Search
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -973,6 +1228,7 @@ export function CargoplotInquiries() {
                         className="cursor-pointer"
                         onClick={() => {
                           setActiveInquiry(inq);
+                          if (inq.status === 'Received') loadDraftFromInquiry(inq);
                           setView('results');
                         }}
                       >
@@ -1023,231 +1279,7 @@ export function CargoplotInquiries() {
 
       {view === 'create' && (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex-1 border">
-                <div className="grid grid-cols-2 divide-x border-b">
-                  <SpecField label="Origin" value={formatLocation(origin)} placeholder="City, country">
-                    <LocationEditor kind="origin" onSave={setOrigin} />
-                  </SpecField>
-                  <SpecField label="Destination" value={formatLocation(destination)} placeholder="City, country">
-                    <LocationEditor kind="destination" onSave={setDestination} />
-                  </SpecField>
-                </div>
-                <div className="grid grid-cols-4 divide-x">
-                  <SpecField label="Type of cargo" value={cargoSummary()} placeholder="Add cargo">
-                    <div>
-                      <Tabs value={cargoMode} onValueChange={(v) => setCargoMode(v as typeof cargoMode)}>
-                        <TabsList className={cn(sharp, 'w-full')}>
-                          <TabsTrigger value="FCL" className={sharp}>
-                            FCL
-                          </TabsTrigger>
-                          <TabsTrigger value="LCL" className={sharp}>
-                            LCL
-                          </TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                      {cargoMode === 'FCL' ? (
-                        <div className="mt-3 space-y-2">
-                          <p className="text-muted-foreground text-xs">Please specify the number and types of your containers</p>
-                          {cargoLines.map((line, i) => (
-                            <div key={i} className="flex items-end gap-2">
-                              <div className="grid w-16 gap-1">
-                                <Label className="text-xs">Quantity</Label>
-                                <Input
-                                  type="number"
-                                  min={1}
-                                  className={sharp}
-                                  value={line.quantity}
-                                  onChange={(e) =>
-                                    setCargoLines((current) =>
-                                      current.map((l, idx) => (idx === i ? { ...l, quantity: Number(e.target.value) || 1 } : l)),
-                                    )
-                                  }
-                                />
-                              </div>
-                              <div className="grid flex-1 gap-1">
-                                <Label className="text-xs">Container type</Label>
-                                <Select
-                                  value={line.containerType}
-                                  onValueChange={(v) =>
-                                    setCargoLines((current) => current.map((l, idx) => (idx === i ? { ...l, containerType: v } : l)))
-                                  }
-                                >
-                                  <SelectTrigger className={cn(sharp, 'w-full')}>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {containerTypes.map((type) => (
-                                      <SelectItem key={type} value={type}>
-                                        {type}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              {cargoLines.length > 1 && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className={cn(sharp, 'text-muted-foreground shrink-0')}
-                                  aria-label="Remove container"
-                                  onClick={() => setCargoLines((current) => current.filter((_, idx) => idx !== i))}
-                                >
-                                  <X className="size-4" />
-                                </Button>
-                              )}
-                            </div>
-                          ))}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={sharp}
-                            onClick={() => setCargoLines((current) => [...current, { quantity: 1, containerType: containerTypes[0] }])}
-                          >
-                            <Plus className="size-4" /> Add container
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="mt-3 grid grid-cols-2 gap-2">
-                          <div className="grid gap-1">
-                            <Label className="text-xs">Volume (cbm)</Label>
-                            <Input className={sharp} value={lclVolume} onChange={(e) => setLclVolume(e.target.value)} />
-                          </div>
-                          <div className="grid gap-1">
-                            <Label className="text-xs">Weight (kg)</Label>
-                            <Input className={sharp} value={lclWeight} onChange={(e) => setLclWeight(e.target.value)} />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </SpecField>
-
-                  <SpecField
-                    label="Cargo ready date"
-                    value={readyDate ? readyDate.toLocaleDateString() : null}
-                    placeholder="Select date"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={readyDate}
-                      onSelect={setReadyDate}
-                      className="p-0"
-                    />
-                  </SpecField>
-
-                  <SpecField
-                    label="Incoterm"
-                    value={incotermOptions.find((o) => o.value === incoterm)?.label}
-                    placeholder="Select incoterm"
-                    info="The Incoterm defines who is responsible for shipping, insurance, and customs at each stage of transport."
-                  >
-                    <div className="space-y-0.5">
-                      {incotermOptions.map((option, i) => (
-                        <div key={option.value}>
-                          {i === 1 && <p className="text-muted-foreground px-2 py-1 text-xs font-semibold">Common options</p>}
-                          <button
-                            type="button"
-                            className={cn(
-                              'flex w-full items-center justify-between px-2 py-1.5 text-left text-sm hover:bg-muted/60',
-                              incoterm === option.value && 'bg-muted',
-                            )}
-                            onClick={() => setIncoterm(option.value)}
-                          >
-                            {option.label}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </SpecField>
-
-                  <SpecField
-                    label="Transport modes"
-                    value={
-                      mainTransport
-                        ? `${mainTransportOptions.find((o) => o.value === mainTransport)?.label} → ${destinationTransport ?? 'Direct truck'}`
-                        : null
-                    }
-                    placeholder="Select modes"
-                    info="Main transport covers port of loading to discharge. Destination transport covers the final leg."
-                    className="border-r-0"
-                  >
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className="flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                          style={{ backgroundColor: BRAND_DARK }}
-                        >
-                          1
-                        </span>
-                        <p className="text-sm font-medium">Main transport</p>
-                      </div>
-                      <p className="text-muted-foreground ml-5.5 text-xs">Port of loading → discharge</p>
-                      <div className="mt-2 ml-5.5 flex gap-1.5">
-                        {mainTransportOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            variant={mainTransport === option.value ? 'default' : 'outline'}
-                            size="sm"
-                            className={sharp}
-                            style={mainTransport === option.value ? { backgroundColor: BRAND_DARK, color: 'white' } : undefined}
-                            onClick={() => setMainTransport(option.value)}
-                          >
-                            <option.icon className="size-4" /> {option.label}
-                          </Button>
-                        ))}
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-1.5">
-                        <span
-                          className="flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-                          style={{ backgroundColor: BRAND_DARK }}
-                        >
-                          2
-                        </span>
-                        <p className="text-sm font-medium">Destination transport</p>
-                      </div>
-                      <p className="text-muted-foreground ml-5.5 text-xs">Rail and barge include the final truck leg</p>
-                      <div className="mt-2 ml-5.5 flex gap-1.5">
-                        {destinationTransportOptions.map((option) => (
-                          <Button
-                            key={option.value}
-                            type="button"
-                            variant={destinationTransport === option.value ? 'default' : 'outline'}
-                            size="sm"
-                            className={sharp}
-                            style={
-                              destinationTransport === option.value ? { backgroundColor: BRAND_DARK, color: 'white' } : undefined
-                            }
-                            onClick={() => setDestinationTransport(option.value)}
-                          >
-                            <option.icon className="size-4" /> {option.label}
-                          </Button>
-                        ))}
-                      </div>
-
-                      <div className="mt-3 flex justify-end gap-2 border-t pt-3">
-                        <Button variant="ghost" size="sm" className={sharp}>
-                          Cancel
-                        </Button>
-                        <Button size="sm" className={sharp} style={{ backgroundColor: BRAND_DARK, color: 'white' }}>
-                          Save
-                        </Button>
-                      </div>
-                    </div>
-                  </SpecField>
-                </div>
-              </div>
-              <Button
-                type="button"
-                disabled={!canSearch}
-                className={cn(sharp, 'shrink-0')}
-                style={{ backgroundColor: BRAND_DARK, color: 'white' }}
-                onClick={() => setDescriptionOpen(true)}
-              >
-                <SearchIcon className="size-4" /> Search
-              </Button>
-            </div>
+            {renderSpecGrid(() => setDescriptionOpen(true))}
 
             <div className="mt-4 border p-6" style={{ backgroundColor: BRAND_PALE }}>
               <div className="flex items-start gap-3">
@@ -1288,7 +1320,7 @@ export function CargoplotInquiries() {
 
       {view === 'results' && activeInquiry && activeInquiry.status === 'Received' && quotes.length === 0 && (
         <div className="flex min-h-0 flex-1 flex-col">
-          <ResultsSummaryBar inquiry={activeInquiry} />
+          <div className="p-4">{renderSpecGrid(applyInquiryEdits)}</div>
           <div className="text-muted-foreground m-auto flex max-w-xs flex-col items-center gap-2 text-center">
             <PackageSearch className="size-8" />
             <p className={cn(sora.className, 'text-foreground font-bold')}>No results found</p>
@@ -1307,7 +1339,7 @@ export function CargoplotInquiries() {
                 <SelectTrigger className={cn(sharp, 'w-full')}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className={sharp}>
                   <SelectItem value="price-asc">Price: low to high</SelectItem>
                   <SelectItem value="price-desc">Price: high to low</SelectItem>
                   <SelectItem value="fastest">Fastest transit time</SelectItem>
@@ -1322,7 +1354,7 @@ export function CargoplotInquiries() {
                 <div className="space-y-1.5">
                   {shipmentStages.map((stage, i) => (
                     <label key={stage} className="flex items-center gap-2 text-sm">
-                      <Checkbox defaultChecked={i !== 0} />
+                      <Checkbox className={sharp} defaultChecked={i !== 0} />
                       {stage}
                     </label>
                   ))}
@@ -1366,7 +1398,7 @@ export function CargoplotInquiries() {
                   <SelectTrigger className={cn(sharp, 'w-full')}>
                     <SelectValue placeholder="All carriers" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={sharp}>
                     <SelectItem value="maersk">Maersk</SelectItem>
                     <SelectItem value="hapag">Hapag-Lloyd</SelectItem>
                     <SelectItem value="msc">MSC</SelectItem>
@@ -1379,7 +1411,7 @@ export function CargoplotInquiries() {
                   <SelectTrigger className={cn(sharp, 'w-full')}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={sharp}>
                     <SelectItem value="dangerous">Dangerous goods</SelectItem>
                     <SelectItem value="temperature">Temperature controlled</SelectItem>
                   </SelectContent>
@@ -1398,7 +1430,7 @@ export function CargoplotInquiries() {
                   <SelectTrigger className={cn(sharp, 'w-full')}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={sharp}>
                     <SelectItem value="batteries">Batteries</SelectItem>
                     <SelectItem value="chemicals">Chemicals</SelectItem>
                   </SelectContent>
@@ -1410,7 +1442,7 @@ export function CargoplotInquiries() {
                   <SelectTrigger className={cn(sharp, 'w-full')}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={sharp}>
                     <SelectItem value="own">My own network</SelectItem>
                     <SelectItem value="cargoplot">CargoPlot network</SelectItem>
                   </SelectContent>
@@ -1461,7 +1493,7 @@ export function CargoplotInquiries() {
 
           {/* Quotes */}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
-            <ResultsSummaryBar inquiry={activeInquiry} />
+            {renderSpecGrid(applyInquiryEdits)}
             <div className="mt-4 space-y-3">
               {quotes.map((quote) => (
                 <QuoteCard

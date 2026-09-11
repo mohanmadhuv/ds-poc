@@ -50,11 +50,11 @@ export const sharp = 'rounded-none';
 const contentMaxW = 'max-w-[1200px]';
 
 const navItems = [
-  { icon: Grip, label: 'Dashboard', href: '/' },
-  { icon: SearchIcon, label: 'Inquiries', href: '/inquiries' },
-  { icon: Box, label: 'Shipments', href: '/shipments' },
+  { icon: Grip, label: 'Dashboard', href: '/cargoplot' },
+  { icon: SearchIcon, label: 'Inquiries', href: '/cargoplot/inquiries' },
+  { icon: Box, label: 'Shipments', href: '/cargoplot/shipments' },
   { icon: Store, label: 'Deliveries', href: undefined },
-  { icon: MessagesSquare, label: 'Messages', href: '/messages' },
+  { icon: MessagesSquare, label: 'Messages', href: '/cargoplot/messages' },
   { icon: Banknote, label: 'Invoices', href: undefined },
   { icon: Star, label: 'Favorite routes', href: undefined },
   { icon: Contact, label: 'Address book', href: undefined },
@@ -65,10 +65,12 @@ interface CargoplotShellProps {
   notifications?: ReactNode;
   backLabel?: string;
   onBack?: () => void;
+  /** Opt out of the content max-width cap for pages whose working area should pan edge-to-edge (e.g. Messages). */
+  fullBleed?: boolean;
   children: ReactNode;
 }
 
-export function CargoplotShell({ hasNotification, notifications, backLabel, onBack, children }: CargoplotShellProps) {
+export function CargoplotShell({ hasNotification, notifications, backLabel, onBack, fullBleed, children }: CargoplotShellProps) {
   const [navCollapsed, setNavCollapsed] = useState(false);
   const pathname = usePathname();
 
@@ -221,7 +223,7 @@ export function CargoplotShell({ hasNotification, notifications, backLabel, onBa
         </header>
 
         <div className="flex min-h-0 flex-1 justify-center overflow-hidden">
-          <div className={cn('flex min-h-0 w-full flex-col', contentMaxW)}>{children}</div>
+          <div className={cn('flex min-h-0 w-full flex-col', !fullBleed && contentMaxW)}>{children}</div>
         </div>
       </div>
     </div>

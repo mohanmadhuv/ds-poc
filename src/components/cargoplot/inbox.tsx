@@ -43,8 +43,8 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
-import { conversations as initialConversations, teammates, type Conversation } from '@/fixtures/inbox';
-import { BRAND_DARK, BRAND_MINT, BRAND_PALE, CargoplotShell, sharp } from '@/components/cargoplot-shell';
+import { conversations as initialConversations, teammates, type Conversation } from '@/fixtures/cargoplot/inbox';
+import { BRAND_DARK, BRAND_MINT, BRAND_PALE, CargoplotShell, sharp } from '@/components/cargoplot/shell';
 
 // Brand foundations from cargoplot.com (design-system/adapters/shadcn.md and
 // the Brand foundations page): Sora for headings, Instrument Sans for body,
@@ -164,6 +164,7 @@ export function CargoplotInbox() {
   return (
     <CargoplotShell
       hasNotification={unreadCount > 0}
+      fullBleed
       notifications={
         <>
           <p className="text-sm font-medium">Notifications</p>

@@ -17,17 +17,32 @@ import {
   SidebarMenuItem,
   SidebarProvider,
 } from '@/components/ui/sidebar';
+import { projects } from '@/fixtures/projects';
 
-const navItems = [
-  { href: '/', label: 'Playground' },
-  { href: '/components', label: 'Component inventory' },
-  { href: '/brand-foundations', label: 'Brand foundations' },
+const projectSlugs = new Set(projects.map((project) => project.slug));
+
+// The reference pages that make up a project's "back room" — everything
+// besides the product playground itself. Sub-pages here render as padded
+// tool chrome, not the product's own full-bleed shell.
+const backRoomPages = [
+  { slug: 'components', label: 'Component inventory' },
+  { slug: 'brand-foundations', label: 'Brand foundations' },
 ];
 
-// Playground product screens render their own full-bleed shell (product nav,
-// header, etc.) and manage their own scrolling, so they opt out of this
-// tool's default content padding.
-const fullBleedPaths = ['/', '/messages', '/inquiries', '/shipments'];
+// Every route is either the projects list (root), a project's own
+// full-bleed product playground, or one of that project's padded back-room
+// reference pages — derived from the URL so a new project needs no changes
+// here.
+function currentProjectSlug(pathname: string) {
+  const [slug] = pathname.split('/').filter(Boolean);
+  return slug && projectSlugs.has(slug) ? slug : null;
+}
+
+function isFullBleed(pathname: string) {
+  const [slug, sub] = pathname.split('/').filter(Boolean);
+  if (!slug || !projectSlugs.has(slug)) return false;
+  return !backRoomPages.some((page) => page.slug === sub);
+}
 
 // Matches the easing Squarespace's own editor uses when swapping its canvas
 // between editing chrome and a clean live preview.
@@ -51,6 +66,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const toggle = () => setExpanded((value) => !value);
 
+  const projectSlug = currentProjectSlug(pathname);
+  const project = projects.find((p) => p.slug === projectSlug);
+  const backRoomNavItems = project
+    ? [
+        { href: `/${project.slug}`, label: 'Playground' },
+        ...backRoomPages.map((page) => ({ href: `/${project.slug}/${page.slug}`, label: page.label })),
+      ]
+    : [];
+
   return (
     // The outer container: dark theme, holds the page header, the
     // background gutter revealed around the scaled-down card, and the
@@ -58,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div
       className={cn(
         'dark bg-background text-foreground flex flex-col',
-        fullBleedPaths.includes(pathname) ? 'h-svh overflow-hidden' : 'min-h-svh',
+        isFullBleed(pathname) ? 'h-svh overflow-hidden' : 'min-h-svh',
       )}
     >
       <div
@@ -71,6 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="overflow-hidden">
           <header className="flex h-14 items-center gap-2 px-4">
             <span className="text-sm font-semibold tracking-tight">DS-PoC</span>
+            {project && <span className="text-muted-foreground text-sm">/ {project.name}</span>}
           </header>
         </div>
       </div>
@@ -97,22 +122,21 @@ export function AppShell({ children }: { children: ReactNode }) {
               the transparent corner. The icon is offset to the triangle's
               centroid (2s/3, s/3 for a right triangle in an s×s box), not
               the square's center, so it sits optically inside the shape. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="bg-foreground text-background hover:bg-foreground absolute top-0 right-0 z-10 size-12 rounded-none hover:opacity-90"
-            style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
-            aria-label={expanded ? 'Collapse view' : 'Expand view'}
-            onClick={toggle}
-          >
-            <ArrowUpRight className="size-4 translate-x-2 -translate-y-2" />
-          </Button>
+          {project && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="bg-foreground text-background hover:bg-foreground absolute top-0 right-0 z-10 size-12 rounded-none hover:opacity-90"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+              aria-label={expanded ? 'Collapse view' : 'Expand view'}
+              onClick={toggle}
+            >
+              <ArrowUpRight className="size-4 translate-x-2 -translate-y-2" />
+            </Button>
+          )}
           <main
             id="main-content"
-            className={cn(
-              'flex min-h-0 flex-1 flex-col',
-              fullBleedPaths.includes(pathname) ? 'overflow-hidden' : 'px-8 py-8',
-            )}
+            className={cn('flex min-h-0 flex-1 flex-col', isFullBleed(pathname) ? 'overflow-hidden' : 'px-8 py-8')}
           >
             {children}
           </main>
@@ -121,15 +145,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
-                <SidebarMenu>
-                  {navItems.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href}>
-                        <Link href={item.href}>{item.label}</Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
+                {backRoomNavItems.length > 0 ? (
+                  <SidebarMenu>
+                    {backRoomNavItems.map((item) => (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={pathname === item.href}>
+                          <Link href={item.href}>{item.label}</Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                ) : (
+                  <p className="text-muted-foreground px-2 py-1 text-sm">
+                    Open a project to see its playground and back room.
+                  </p>
+                )}
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>

@@ -15,7 +15,7 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { BRAND_DARK, CargoplotShell, sharp } from '@/components/cargoplot-shell';
+import { BRAND_DARK, CargoplotShell, sharp } from '@/components/cargoplot/shell';
 
 function DashboardCard({
   title,

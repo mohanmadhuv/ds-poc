@@ -32,8 +32,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { inquiries, type Inquiry, type Location, type TransportMode } from '@/fixtures/inquiries';
-import { BRAND_DARK, BRAND_MINT, CargoplotShell, sharp } from '@/components/cargoplot-shell';
+import { inquiries, type Inquiry, type Location, type TransportMode } from '@/fixtures/cargoplot/inquiries';
+import { BRAND_DARK, BRAND_MINT, CargoplotShell, sharp } from '@/components/cargoplot/shell';
 
 const sora = Sora({ subsets: ['latin'], weight: ['600', '700'] });
 

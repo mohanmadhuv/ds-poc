@@ -29,8 +29,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
-import { barData, donutData, lineData } from '@/fixtures/charts';
-import { componentFamilies } from '@/fixtures/inventory';
+import { barData, donutData, lineData } from '@/fixtures/cargoplot/charts';
+import { componentFamilies } from '@/fixtures/cargoplot/inventory';
 
 const barConfig = {
   requests: { label: 'Requests', color: 'var(--chart-1)' },

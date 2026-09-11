@@ -1,5 +1,5 @@
-import { CargoplotDashboard } from '@/components/cargoplot-dashboard';
+import { ProjectsList } from '@/components/projects-list';
 
 export default function Page() {
-  return <CargoplotDashboard />;
+  return <ProjectsList />;
 }
