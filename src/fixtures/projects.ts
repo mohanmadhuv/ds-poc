@@ -18,4 +18,10 @@ export const projects: Project[] = [
     description: 'Freight forwarding platform — inquiries, quoting, shipments, and messaging.',
     status: 'In review',
   },
+  {
+    slug: 'guzco',
+    name: 'Guzco',
+    description: 'Dispute management platform — chargeback automation, risk scoring, delivery intelligence, and client segmentation.',
+    status: 'In review',
+  },
 ];
